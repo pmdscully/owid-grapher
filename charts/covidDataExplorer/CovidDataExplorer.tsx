@@ -859,6 +859,7 @@ export class CovidDataExplorer extends React.Component<{
 
     private _updateMap() {
         const chartProps = this.chart.props
+        const region = chartProps.map.projection
 
         Object.assign(
             chartProps.map,
@@ -867,6 +868,9 @@ export class CovidDataExplorer extends React.Component<{
 
         chartProps.map.targetYear = undefined
         chartProps.map.variableId = this.yColumn.spec.owidVariableId
+
+        // Preserve region
+        if (region) chartProps.map.projection = region
     }
 
     componentDidMount() {
