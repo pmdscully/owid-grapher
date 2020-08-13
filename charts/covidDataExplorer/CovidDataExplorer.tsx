@@ -222,7 +222,7 @@ export class CovidDataExplorer extends React.Component<{
             <>
                 <ExplorerControlPanel
                     title="Metric"
-                    explorerName="covid"
+                    explorerSlug="covid"
                     name={this.getScopedName("metric")}
                     options={options}
                     onChange={this.changeMetric}
@@ -230,7 +230,7 @@ export class CovidDataExplorer extends React.Component<{
                 />
                 <ExplorerControlPanel
                     title="Metric"
-                    explorerName="covid"
+                    explorerSlug="covid"
                     hideTitle={true}
                     name={this.getScopedName("metric")}
                     onChange={this.changeMetric}
@@ -297,7 +297,7 @@ export class CovidDataExplorer extends React.Component<{
                     writeableParams.setTimeline(value as IntervalOption)
                     this.renderControlsThenUpdateChart()
                 }}
-                explorerName="covid"
+                explorerSlug="covid"
             />
         )
     }
@@ -322,7 +322,7 @@ export class CovidDataExplorer extends React.Component<{
                 name={this.getScopedName("count")}
                 isCheckbox={true}
                 options={options}
-                explorerName="covid"
+                explorerSlug="covid"
                 onChange={value => {
                     this.props.params.perCapita = value === "true"
                     this.renderControlsThenUpdateChart()
@@ -352,7 +352,7 @@ export class CovidDataExplorer extends React.Component<{
                     this.renderControlsThenUpdateChart()
                 }}
                 comment={this.constrainedParams.trajectoryColumnOption.name}
-                explorerName="covid"
+                explorerSlug="covid"
             />
         )
     }
@@ -432,7 +432,7 @@ export class CovidDataExplorer extends React.Component<{
     get countryPicker() {
         return (
             <CountryPicker
-                explorerName="Covid"
+                explorerSlug="Covid"
                 table={this.chart.table}
                 pickerColumns={new Set(Object.keys(CovidCountryPickerMetric))}
                 isDropdownMenu={this.isMobile}
