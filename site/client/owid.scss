@@ -20,14 +20,12 @@
 
 @import "css/variables.scss";
 @import "css/mixins.scss";
-
 @import "css/category-coloring.scss";
 @import "css/util.scss";
 @import "css/layout.scss";
 @import "css/general.scss";
 @import "css/header.scss";
 @import "css/footer.scss";
-
 @import "css/content.scss";
 @import "css/forms.scss";
 @import "css/page.scss";
@@ -36,24 +34,24 @@
 @import "css/pages/homepage.scss";
 @import "css/pages/donate.scss";
 @import "css/pages/faq.scss";
-@import "css/pages/commandPalette.scss";
-@import "css/pages/covidDataExplorer.scss";
 @import "css/pages/covid.scss";
 @import "css/pages/chart.scss";
 
-@import "css/components/global-entity-select.scss";
 @import "css/components/cookie-notice.scss";
 @import "css/components/site-tools.scss";
 @import "css/components/newsletter-subscription.scss";
 @import "css/components/lightbox.scss";
-@import "css/components/loading-indicator.scss";
-@import "css/components/sparkbars.scss";
-@import "css/components/map-tooltip.scss";
-@import "css/components/datatable.scss";
+@import "css/components/alert-banner.scss";
+
+@import "explorer/client/ExplorerShell.scss";
+@import "explorer/client/ExplorerControls.scss";
+@import "explorer/covidExplorer/CovidExplorer.scss";
+@import "explorer/indicatorExplorer/IndicatorExplorer.scss";
+
+@import "site/globalEntityControl/GlobalEntityControl.scss";
 @import "site/client/blocks/AdditionalInformation/additional-information.scss";
 @import "site/client/blocks/ProminentLink/prominent-link.scss";
 @import "site/client/blocks/RelatedCharts/related-charts.scss";
-@import "css/components/alert-banner.scss";
 @import "site/client/blocks/Summary/summary.scss";
 @import "site/client/blocks/Help/help.scss";
 
@@ -122,7 +120,7 @@ body.blog h2 {
 }
 
 body.blog ul.posts {
-    @include posts-list;
+    @include posts-list(20);
 }
 
 body.blog li.post h3 {
@@ -146,15 +144,20 @@ body.blog li.post a:hover h3 {
     color: #d10a11;
 }
 
-body.blog li.post a:hover img {
-    border: 1px solid #999;
+body.blog li.post a .cover-image {
+    width: 100%;
+    height: 0;
+    padding-bottom: 52.5%;
+    background-repeat: no-repeat;
+    background-position: center center;
+    background-size: cover;
+    background-color: rgba(white, 0.05);
+
+    border: 1px solid #e0e0e0;
 }
 
-body.blog li.post img {
-    border: 1px solid #e0e0e0;
-    width: 100%;
-    height: 215px;
-    object-fit: cover;
+body.blog li.post a:hover .cover-image {
+    border: 1px solid #999;
 }
 
 @include md-up {
@@ -710,15 +713,15 @@ div.owid-presentations li:nth-of-type(1) a:hover {
                 $padding-x-md;
         }
     }
-    width: 100vw;
+    @include full-width;
     padding-top: 2.5rem;
     padding-bottom: 2.5rem;
+    margin-bottom: 2rem;
     @include md-up {
         padding-top: 4 * $vertical-spacing;
         padding-bottom: 4 * $vertical-spacing;
+        margin-bottom: 5rem;
     }
-    margin-left: calc(50% - 50vw);
-    margin-bottom: 5rem;
     background-color: $primary-color-200;
 
     @include xxlg-up {
@@ -780,10 +783,12 @@ div.owid-presentations li:nth-of-type(1) a:hover {
 }
 
 .with-sidebar .section-heading {
-    position: relative;
-    width: calc(100vw - #{$sidebar-closed-drawer-width});
-    left: $sidebar-closed-drawer-width;
-    margin-left: calc(50% - 50vw - #{$sidebar-closed-drawer-width / 2});
+    @include md-up {
+        position: relative;
+        width: calc(100vw - #{$sidebar-closed-drawer-width});
+        left: $sidebar-closed-drawer-width;
+        margin-left: calc(50% - 50vw - #{$sidebar-closed-drawer-width / 2});
+    }
 
     @include xxlg-up {
         width: calc(100vw - #{$sidebar-content-width + 2 * $padding-x-md});

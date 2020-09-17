@@ -1,8 +1,9 @@
 import fuzzysort from "fuzzysort"
-import { keyBy } from "charts/Util"
+import { keyBy } from "grapher/utils/Util"
 import { observable, computed, action, autorun } from "mobx"
-import { Analytics } from "./Analytics"
-import { highlight as fuzzyHighlight } from "charts/FuzzySearch"
+import { Analytics } from "grapher/core/Analytics"
+import { highlight as fuzzyHighlight } from "grapher/controls/FuzzySearch"
+import { ENV } from "settings"
 interface ChartItem {
     title: string
     li: HTMLLIElement
@@ -32,7 +33,7 @@ class ChartFilter {
     @observable query: string = ""
 
     @computed get searchStrings(): (Fuzzysort.Prepared | undefined)[] {
-        return this.chartItems.map(c => fuzzysort.prepare(c.title))
+        return this.chartItems.map((c) => fuzzysort.prepare(c.title))
     }
 
     @computed get searchResults(): Fuzzysort.Results {
@@ -53,17 +54,19 @@ class ChartFilter {
         const lis = Array.from(
             document.querySelectorAll(".ChartsIndexPage main .content li")
         ) as HTMLLIElement[]
-        this.chartItems = lis.map(li => ({
+        this.chartItems = lis.map((li) => ({
             title: (li.children[0].textContent as string).replace(/₂/g, "2"),
             li: li,
-            ul: li.closest("ul") as HTMLUListElement
+            ul: li.closest("ul") as HTMLUListElement,
         }))
         this.chartItemsByTitle = keyBy(this.chartItems, "title")
-        this.strings = this.chartItems.map(c => fuzzysort.prepare(c.title))
+        this.strings = this.chartItems.map((c) => fuzzysort.prepare(c.title))
     }
 
+    analytics = new Analytics(ENV)
+
     @action.bound logSearchQuery() {
-        Analytics.logChartsPageSearchQuery(this.query)
+        this.analytics.logChartsPageSearchQuery(this.query)
     }
 
     timeout?: NodeJS.Timeout
@@ -123,7 +126,7 @@ class ChartFilter {
         for (const section of this.sections) {
             if (
                 !Array.from(section.querySelectorAll("li")).some(
-                    li => li.style.display !== "none"
+                    (li) => li.style.display !== "none"
                 )
             ) {
                 section.style.display = "none"

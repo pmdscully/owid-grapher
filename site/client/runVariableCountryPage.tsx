@@ -1,42 +1,20 @@
 import * as React from "react"
-import { OwidVariableDisplaySettings } from "charts/owidData/OwidVariable"
 import ReactDOM from "react-dom"
-import { clone } from "charts/Util"
+import { clone } from "grapher/utils/Util"
 import { computed, IReactionDisposer, observable } from "mobx"
-import { ChartConfig } from "charts/ChartConfig"
-import { ChartFigureView } from "./ChartFigureView"
+import { Grapher } from "grapher/core/Grapher"
+import { GrapherFigureView } from "./GrapherFigureView"
 import { observer } from "mobx-react"
-import { owidVariableId } from "charts/owidData/OwidTable"
-
-interface Variable {
-    id: owidVariableId
-    name: string
-    unit: string
-    shortUnit: string
-    description: string
-    display: OwidVariableDisplaySettings
-
-    datasetId: number
-    datasetName: string
-    datasetNamespace: string
-
-    source: { id: number; name: string }
-}
-
-interface Country {
-    id: number
-    name: string
-}
+import { VariableCountryPageProps } from "site/server/views/VariableCountryPageProps"
 
 @observer
 class ClientVariableCountryPage extends React.Component<{
-    variable: Variable
-    country: Country
+    countryPageProps: VariableCountryPageProps
 }> {
-    @observable.ref chart?: ChartConfig
+    @observable.ref chart?: Grapher
 
     @computed get chartConfig() {
-        const { variable, country } = this.props
+        const { variable, country } = this.props.countryPageProps
         return {
             yAxis: { min: 0 },
             map: { variableId: variable.id },
@@ -46,39 +24,41 @@ class ClientVariableCountryPage extends React.Component<{
                 {
                     property: "y",
                     variableId: variable.id,
-                    display: clone(variable.display)
-                }
+                    display: clone(variable.display),
+                },
             ],
             selectedData: [
                 {
                     entityId: country.id,
-                    index: 0
-                }
-            ]
+                    index: 0,
+                },
+            ],
         }
     }
 
     dispose!: IReactionDisposer
     componentDidMount() {
-        this.chart = new ChartConfig(this.chartConfig as any, { isEmbed: true })
+        this.chart = new Grapher(this.chartConfig as any, {
+            isEmbed: true,
+        })
     }
 
     render() {
-        const { variable, country } = this.props
+        const { variable, country } = this.props.countryPageProps
         return (
             <React.Fragment>
                 <h1>
                     {variable.name} in {country.name}
                 </h1>
-                {this.chart && <ChartFigureView chart={this.chart} />}
+                {this.chart && <GrapherFigureView grapher={this.chart} />}
             </React.Fragment>
         )
     }
 }
 
-export function runVariableCountryPage(props: any) {
+export function runVariableCountryPage(props: VariableCountryPageProps) {
     ReactDOM.render(
-        <ClientVariableCountryPage {...props} />,
+        <ClientVariableCountryPage countryPageProps={props} />,
         document.querySelector("main")
     )
 }

@@ -2,17 +2,17 @@ import * as db from "db/db"
 import { renderToHtmlPage, JsonError } from "utils/server/serverUtil"
 import React from "react"
 import { CountriesIndexPage } from "./views/CountriesIndexPage"
-import { ChartConfigProps } from "charts/ChartConfig"
-import _ from "lodash"
+import { GrapherInterface } from "grapher/core/GrapherInterface"
+import * as lodash from "lodash"
 import {
     CountryProfileIndicator,
-    CountryProfilePage
+    CountryProfilePage,
 } from "./views/CountryProfilePage"
-import { ChartDimensionWithOwidVariable } from "charts/ChartDimensionWithOwidVariable"
+import { ChartDimension } from "grapher/chart/ChartDimension"
 import { Variable } from "db/model/Variable"
 import { SiteBaker } from "./SiteBaker"
 import { countries, getCountry } from "utils/countries"
-import { OwidTable } from "charts/owidData/OwidTable"
+import { OwidTable } from "owidTable/OwidTable"
 
 export async function countriesIndexPage() {
     return renderToHtmlPage(<CountriesIndexPage countries={countries} />)
@@ -32,26 +32,26 @@ function bakeCache<T>(cacheKey: any, retriever: () => T): T {
 
 // Find the charts that will be shown on the country profile page (if they have that country)
 // TODO: make this page per variable instead
-async function countryIndicatorCharts(): Promise<ChartConfigProps[]> {
-    return bakeCache(countryIndicatorCharts, async () => {
-        const charts = (
+async function countryIndicatorGraphers(): Promise<GrapherInterface[]> {
+    return bakeCache(countryIndicatorGraphers, async () => {
+        const graphers = (
             await db
                 .table("charts")
                 .whereRaw("publishedAt is not null and is_indexable is true")
-        ).map((c: any) => JSON.parse(c.config)) as ChartConfigProps[]
-        return charts.filter(
-            c =>
-                c.hasChartTab &&
-                c.type === "LineChart" &&
-                c.dimensions.length === 1
+        ).map((c: any) => JSON.parse(c.config)) as GrapherInterface[]
+        return graphers.filter(
+            (grapher) =>
+                grapher.hasChartTab &&
+                grapher.type === "LineChart" &&
+                grapher.dimensions?.length === 1
         )
     })
 }
 
 async function countryIndicatorVariables(): Promise<Variable.Row[]> {
     return bakeCache(countryIndicatorVariables, async () => {
-        const variableIds = (await countryIndicatorCharts()).map(
-            c => c.dimensions[0].variableId
+        const variableIds = (await countryIndicatorGraphers()).map(
+            (c) => c.dimensions![0]!.variableId
         )
         return Variable.rows(
             await db.table(Variable.table).whereIn("id", variableIds)
@@ -68,12 +68,12 @@ export async function denormalizeLatestCountryData(variableIds?: number[]) {
         code: string
     }[]
 
-    const entitiesByCode = _.keyBy(entities, e => e.code)
-    const entitiesById = _.keyBy(entities, e => e.id)
-    const entityIds = countries.map(c => entitiesByCode[c.code].id)
+    const entitiesByCode = lodash.keyBy(entities, (e) => e.code)
+    const entitiesById = lodash.keyBy(entities, (e) => e.id)
+    const entityIds = countries.map((c) => entitiesByCode[c.code].id)
 
     if (!variableIds) {
-        variableIds = (await countryIndicatorVariables()).map(v => v.id)
+        variableIds = (await countryIndicatorVariables()).map((v) => v.id)
     }
 
     const dataValuesQuery = db
@@ -91,15 +91,18 @@ export async function denormalizeLatestCountryData(variableIds?: number[]) {
         value: string
         year: number
     }[]
-    dataValues = _.uniqBy(dataValues, dv => `${dv.variableId}-${dv.entityId}`)
-    const rows = dataValues.map(dv => ({
+    dataValues = lodash.uniqBy(
+        dataValues,
+        (dv) => `${dv.variableId}-${dv.entityId}`
+    )
+    const rows = dataValues.map((dv) => ({
         variable_id: dv.variableId,
         country_code: entitiesById[dv.entityId].code,
         year: dv.year,
-        value: dv.value
+        value: dv.value,
     }))
 
-    db.knex().transaction(async t => {
+    db.knex().transaction(async (t) => {
         // Remove existing values
         await t
             .table("country_latest_data")
@@ -129,7 +132,7 @@ async function countryIndicatorLatestData(countryCode: string) {
                 value: string
             }[]
 
-            return _.groupBy(dataValues, dv => dv.code)
+            return lodash.groupBy(dataValues, (dv) => dv.code)
         }
     )
 
@@ -170,16 +173,17 @@ export async function countryProfilePage(countrySlug: string) {
         throw new JsonError(`No such country ${countrySlug}`, 404)
     }
 
-    const charts = await countryIndicatorCharts()
+    const graphers = await countryIndicatorGraphers()
     const variables = await countryIndicatorVariables()
-    const variablesById = _.keyBy(variables, v => v.id)
+    const variablesById = lodash.keyBy(variables, (v) => v.id)
     const dataValues = await countryIndicatorLatestData(country.code)
 
-    const valuesByVariableId = _.groupBy(dataValues, v => v.variableId)
+    const valuesByVariableId = lodash.groupBy(dataValues, (v) => v.variableId)
 
     let indicators: CountryProfileIndicator[] = []
-    for (const c of charts) {
-        const vid = c.dimensions[0] && c.dimensions[0].variableId
+    for (const grapher of graphers) {
+        const firstDimension = grapher.dimensions![0]
+        const vid = firstDimension && firstDimension.variableId
         const values = valuesByVariableId[vid]
 
         if (values && values.length) {
@@ -189,17 +193,14 @@ export async function countryProfilePage(countrySlug: string) {
             // todo: this is a lot of setup to get formatValueShort. Maybe cleanup?
             const spec = new Map()
             spec.set(variable.name, {
+                owidVariableId: vid,
                 unit: variable.unit,
-                display: variable.display
+                display: variable.display,
             })
-            const column = new OwidTable([], spec)
-            const dim = new ChartDimensionWithOwidVariable(
-                0,
-                c.dimensions[0],
-                column.columnsBySlug.get(variable.name)!
-            )
+            const table = new OwidTable([], spec)
+            const dim = new ChartDimension(firstDimension, table)
 
-            const formatValueShort = dim.formatValueShort
+            const formatValueShort = dim.formatValueShortFn
 
             let value: string | number
             value = parseFloat(latestValue.value)
@@ -212,14 +213,14 @@ export async function countryProfilePage(countrySlug: string) {
             indicators.push({
                 year: latestValue.year,
                 value: formatValueShort(value),
-                name: c.title as string,
-                slug: `/grapher/${c.slug}?tab=chart&country=${country.code}`,
-                variantName: c.variantName
+                name: grapher.title as string,
+                slug: `/grapher/${grapher.slug}?tab=chart&country=${country.code}`,
+                variantName: grapher.variantName,
             })
         }
     }
 
-    indicators = _.sortBy(indicators, i => i.name.trim())
+    indicators = lodash.sortBy(indicators, (i) => i.name.trim())
 
     return renderToHtmlPage(
         <CountryProfilePage indicators={indicators} country={country} />

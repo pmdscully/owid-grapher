@@ -1,6 +1,16 @@
-import { flatten } from "charts/Util"
-
+import { flatten } from "grapher/utils/Util"
 import chunk from "chunk-text"
+import { fromString } from "html-to-text"
+
+export function htmlToPlaintext(html: string): string {
+    return fromString(html, {
+        tables: true,
+        ignoreHref: true,
+        wordwrap: false,
+        uppercaseHeadings: false,
+        ignoreImage: true,
+    })
+}
 
 export function chunkWords(text: string, maxChunkLength: number): string[] {
     return chunk(text, maxChunkLength)
@@ -13,12 +23,12 @@ export function chunkSentences(text: string, maxChunkLength: number): string[] {
     const sentences = flatten(
         text
             .split(sentenceRegex)
-            .map(s =>
+            .map((s) =>
                 s.length > maxChunkLength ? chunkWords(s, maxChunkLength) : s
             )
     )
-        .map(s => s.trim())
-        .filter(s => s)
+        .map((s) => s.trim())
+        .filter((s) => s)
         .reverse() as string[]
 
     const chunks = []
@@ -53,14 +63,14 @@ export function chunkParagraphs(
     const paragraphs = flatten(
         text
             .split("\n\n")
-            .map(p =>
+            .map((p) =>
                 p.length > maxChunkLength
                     ? chunkSentences(p, maxChunkLength)
                     : p
             )
     )
-        .map(p => p.trim())
-        .filter(p => p)
+        .map((p) => p.trim())
+        .filter((p) => p)
         .reverse() as string[]
 
     const chunks = []

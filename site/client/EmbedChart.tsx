@@ -6,10 +6,10 @@ import {
     observable,
     runInAction,
     autorun,
-    IReactionDisposer
+    IReactionDisposer,
 } from "mobx"
-import { ChartConfig } from "charts/ChartConfig"
-import { ChartFigureView } from "./ChartFigureView"
+import { Grapher } from "grapher/core/Grapher"
+import { GrapherFigureView } from "./GrapherFigureView"
 import { splitURLintoPathAndQueryString } from "utils/client/url"
 
 @observer
@@ -20,7 +20,7 @@ export class EmbedChart extends React.Component<{ src: string }> {
     @computed get queryStr(): string | undefined {
         return splitURLintoPathAndQueryString(this.props.src).queryString
     }
-    @observable chart?: ChartConfig
+    @observable chart?: Grapher
 
     async loadConfig() {
         const { configUrl } = this
@@ -33,9 +33,9 @@ export class EmbedChart extends React.Component<{ src: string }> {
         const html = await resp.text()
         const config = readConfigFromHTML(html)
         runInAction(() => {
-            this.chart = new ChartConfig(config, {
+            this.chart = new Grapher(config, {
                 isEmbed: true,
-                queryStr: this.queryStr
+                queryStr: this.queryStr,
             })
         })
     }
@@ -51,7 +51,7 @@ export class EmbedChart extends React.Component<{ src: string }> {
 
     render() {
         return this.chart ? (
-            <ChartFigureView chart={this.chart} />
+            <GrapherFigureView grapher={this.chart} />
         ) : (
             <figure data-grapher-src={this.props.src} />
         )

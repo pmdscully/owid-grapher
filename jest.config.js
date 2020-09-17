@@ -3,8 +3,8 @@
 process.env.EXPLORER = true
 
 // For now:
-// - server tests go in the test/ dir and are run in the node environment
-// - client tests go in __tests__ files anywhere else, and are run in the jsdom environment
+// - server tests end in .node.test.tsx? and are run in the node environment
+// - client tests end in .test.tsx? and are run in the jsdom environment
 //
 // This may not be ideal long-term, but we need a simple pattern-matching way to distinguish
 // between client and server tests. -@jasoncrawford 2019-12-03
@@ -12,29 +12,31 @@ process.env.EXPLORER = true
 const common = {
     preset: "ts-jest",
     moduleNameMapper: {
-        "^(admin|site|charts|utils|db|settings|test)/(.*)$": "<rootDir>/$1/$2",
+        "^(adminSite|site|grapher|explorer|owidTable|utils|db|deploy|settings|test)/(.*)$":
+            "<rootDir>/$1/$2",
         "^settings$": "<rootDir>/settings",
         "^serverSettings$": "<rootDir>/serverSettings",
         // Jest cannot handle importing CSS
         // https://stackoverflow.com/questions/39418555/syntaxerror-with-jest-and-react-and-importing-css-files
-        "\\.(css|less|sass|scss)$": "<rootDir>/test/styleMock.ts"
-    }
+        "\\.(css|less|sass|scss)$": "<rootDir>/utils/styleMock.ts",
+    },
 }
 
 module.exports = {
     projects: [
         {
             ...common,
-            displayName: "server",
+            displayName: "node",
             testEnvironment: "node",
-            testMatch: ["<rootDir>/test/**/?(*.)+(spec|test).[jt]s?(x)"]
+            testPathIgnorePatterns: [".jsdom.test."],
+            testMatch: ["**/*.test.(tsx|ts)"],
         },
         {
             ...common,
-            displayName: "client",
+            displayName: "jsdom",
             testEnvironment: "jsdom",
-            setupFilesAfterEnv: ["<rootDir>/test/enzymeSetup.ts"],
-            testMatch: ["**/__tests__/**/*.[jt]s?(x)"]
-        }
-    ]
+            setupFilesAfterEnv: ["<rootDir>/.enzymeSetup.ts"],
+            testMatch: ["**/*.jsdom.test.(tsx|ts)"],
+        },
+    ],
 }

@@ -1,6 +1,6 @@
 import * as db from "db/db"
 import * as wpdb from "db/wpdb"
-import * as _ from "lodash"
+import * as lodash from "lodash"
 import { Tag } from "./Tag"
 import { QueryBuilder } from "knex"
 import { decodeHTML } from "entities"
@@ -25,7 +25,7 @@ export namespace Post {
         ...args: K[]
     ): { from: (query: QueryBuilder) => Promise<Pick<Row, K>[]> } {
         return {
-            from: query => query.select(...args) as any
+            from: (query) => query.select(...args) as any,
         }
     }
 
@@ -51,8 +51,8 @@ export namespace Post {
     }
 
     export async function setTags(postId: number, tagIds: number[]) {
-        await db.transaction(async t => {
-            const tagRows = tagIds.map(tagId => [tagId, postId])
+        await db.transaction(async (t) => {
+            const tagRows = tagIds.map((tagId) => [tagId, postId])
             await t.execute(`DELETE FROM post_tags WHERE post_id=?`, [postId])
             if (tagRows.length)
                 await t.execute(
@@ -76,15 +76,15 @@ export async function syncPostsToGrapher() {
         "SELECT * FROM wp_posts WHERE (post_type='page' OR post_type='post') AND post_status != 'trash'"
     )
 
-    const doesExistInWordpress = _.keyBy(rows, "ID")
+    const doesExistInWordpress = lodash.keyBy(rows, "ID")
     const existsInGrapher = await Post.select("id").from(
         db.knex().from(Post.table)
     )
-    const doesExistInGrapher = _.keyBy(existsInGrapher, "id")
+    const doesExistInGrapher = lodash.keyBy(existsInGrapher, "id")
 
     const toDelete = existsInGrapher
-        .filter(p => !doesExistInWordpress[p.id])
-        .map(p => p.id)
+        .filter((p) => !doesExistInWordpress[p.id])
+        .map((p) => p.id)
     const toInsert = rows.map((post: any) => {
         return {
             id: post.ID,
@@ -100,24 +100,18 @@ export async function syncPostsToGrapher() {
             updated_at:
                 post.post_modified_gmt === "0000-00-00 00:00:00"
                     ? "1970-01-01 00:00:00"
-                    : post.post_modified_gmt
+                    : post.post_modified_gmt,
         }
     }) as Post.Row[]
 
-    await db.knex().transaction(async t => {
+    await db.knex().transaction(async (t) => {
         if (toDelete.length) {
-            await t
-                .whereIn("id", toDelete)
-                .delete()
-                .from(Post.table)
+            await t.whereIn("id", toDelete).delete().from(Post.table)
         }
 
         for (const row of toInsert) {
             if (doesExistInGrapher[row.id])
-                await t
-                    .update(row)
-                    .where("id", "=", row.id)
-                    .into(Post.table)
+                await t.update(row).where("id", "=", row.id).into(Post.table)
             else await t.insert(row).into(Post.table)
         }
     })
@@ -131,7 +125,9 @@ export async function syncPostTagsToGrapher() {
 
     for (const post of postRows) {
         const tags = tagsByPostId.get(post.ID) || []
-        const tagNames = tags.map(t => decodeHTML(t)).concat([post.post_title])
+        const tagNames = tags
+            .map((t) => decodeHTML(t))
+            .concat([post.post_title])
         const matchingTags = await Tag.select(
             "id",
             "name",
@@ -143,11 +139,11 @@ export async function syncPostTagsToGrapher() {
                 .whereIn("name", tagNames)
                 .andWhere({ isBulkImport: false })
         )
-        const tagIds = matchingTags.map(t => t.id)
-        if (matchingTags.map(t => t.name).includes(post.post_title)) {
+        const tagIds = matchingTags.map((t) => t.id)
+        if (matchingTags.map((t) => t.name).includes(post.post_title)) {
             tagIds.push(1640)
         }
-        await Post.setTags(post.ID, _.uniq(tagIds))
+        await Post.setTags(post.ID, lodash.uniq(tagIds))
     }
 }
 
@@ -179,17 +175,14 @@ export async function syncPostToGrapher(
               updated_at:
                   wpPost.post_modified_gmt === "0000-00-00 00:00:00"
                       ? "1970-01-01 00:00:00"
-                      : wpPost.post_modified_gmt
+                      : wpPost.post_modified_gmt,
           } as Post.Row)
         : undefined
 
-    await db.knex().transaction(async t => {
+    await db.knex().transaction(async (t) => {
         if (!postRow && existsInGrapher) {
             // Delete from grapher
-            await t
-                .table(Post.table)
-                .where({ id: postId })
-                .delete()
+            await t.table(Post.table).where({ id: postId }).delete()
         } else if (postRow && !existsInGrapher) {
             await t.table(Post.table).insert(postRow)
         } else if (postRow && existsInGrapher) {

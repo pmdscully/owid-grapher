@@ -7,20 +7,22 @@ import {
     WORDPRESS_DB_USER,
     WORDPRESS_DB_PASS,
     WORDPRESS_API_PASS,
-    WORDPRESS_API_USER
+    WORDPRESS_API_USER,
 } from "serverSettings"
 import { WORDPRESS_URL, BAKED_BASE_URL, BLOG_SLUG } from "settings"
 import * as db from "db/db"
 import Knex from "knex"
 import fetch from "node-fetch"
 
-import { defaultTo, memoize } from "charts/Util"
+import { defaultTo, memoize } from "grapher/utils/Util"
 import { Base64 } from "js-base64"
 import { registerExitHandler } from "./cleanup"
 import { RelatedChart } from "site/client/blocks/RelatedCharts/RelatedCharts"
 import { JsonError } from "utils/server/serverUtil"
-import { covidCountryProfileSlug } from "site/server/covid/CovidConstants"
-import { CountryProfileSpec } from "site/client/CountryProfileConstants"
+import {
+    CountryProfileSpec,
+    countryProfileSpecs,
+} from "site/server/countryProfileProjects"
 
 class WPDB {
     conn?: DatabaseConnection
@@ -34,8 +36,8 @@ class WPDB {
                     port: WORDPRESS_DB_PORT,
                     user: WORDPRESS_DB_USER,
                     password: WORDPRESS_DB_PASS,
-                    database: WORDPRESS_DB_NAME
-                }
+                    database: WORDPRESS_DB_NAME,
+                },
             })
 
             registerExitHandler(async () => {
@@ -52,7 +54,7 @@ class WPDB {
             port: WORDPRESS_DB_PORT,
             user: WORDPRESS_DB_USER,
             password: WORDPRESS_DB_PASS,
-            database: WORDPRESS_DB_NAME
+            database: WORDPRESS_DB_NAME,
         })
         await this.conn.connect()
 
@@ -90,7 +92,7 @@ async function apiQuery(
     const url = new URL(endpoint)
 
     if (params && params.searchParams) {
-        params.searchParams.forEach(param => {
+        params.searchParams.forEach((param) => {
             url.searchParams.append(param[0], String(param[1]))
         })
     }
@@ -103,9 +105,9 @@ async function apiQuery(
                     "Basic " +
                         Base64.encode(
                             `${WORDPRESS_API_USER}:${WORDPRESS_API_PASS}`
-                        )
-                ]
-            ]
+                        ),
+                ],
+            ],
         })
     } else {
         return fetch(url.toString())
@@ -148,12 +150,7 @@ export async function getAuthorship(): Promise<Map<number, string[]>> {
             authors = []
             authorship.set(row.object_id, authors)
         }
-        authors.push(
-            row.description
-                .split(" ")
-                .slice(0, 2)
-                .join(" ")
-        )
+        authors.push(row.description.split(" ").slice(0, 2).join(" "))
     }
 
     cachedAuthorship = authorship
@@ -276,12 +273,12 @@ export async function getEntriesByCategory(): Promise<CategoryWithEntries[]> {
         method: "POST",
         headers: {
             "Content-Type": "application/json",
-            Accept: "application/json"
+            Accept: "application/json",
         },
         body: JSON.stringify({
             query,
-            variables: { first, orderby }
-        })
+            variables: { first, orderby },
+        }),
     })
     const json = await response.json()
 
@@ -296,7 +293,7 @@ export async function getEntriesByCategory(): Promise<CategoryWithEntries[]> {
         slug,
         title: decodeHTML(title),
         excerpt: excerpt === null ? "" : decodeHTML(excerpt),
-        kpi
+        kpi,
     })
 
     const isEntryInSubcategories = (entry: EntryNode, subcategories: any) => {
@@ -341,8 +338,8 @@ export async function getEntriesByCategory(): Promise<CategoryWithEntries[]> {
                     slug,
                     entries: pages.nodes.map((node: EntryNode) =>
                         getEntryNode(node)
-                    )
-                }))
+                    ),
+                })),
         })
     )
 
@@ -352,17 +349,17 @@ export async function getEntriesByCategory(): Promise<CategoryWithEntries[]> {
 export enum PageType {
     Entry = "ENTRY",
     SubEntry = "SUBENTRY",
-    Standard = "STANDARD"
+    Standard = "STANDARD",
 }
 
 export async function getPageType(post: FullPost): Promise<PageType> {
     const entries = await getEntriesByCategory()
-    const isEntry = entries.some(category => {
+    const isEntry = entries.some((category) => {
         return (
-            category.entries.some(entry => entry.slug === post.slug) ||
+            category.entries.some((entry) => entry.slug === post.slug) ||
             category.subcategories.some((subcategory: CategoryWithEntries) => {
                 return subcategory.entries.some(
-                    subCategoryEntry => subCategoryEntry.slug === post.slug
+                    (subCategoryEntry) => subCategoryEntry.slug === post.slug
                 )
             })
         )
@@ -379,7 +376,7 @@ export async function getPermalinks() {
             postName
                 .replace(/\/+$/g, "")
                 .replace(/--/g, "/")
-                .replace(/__/g, "/")
+                .replace(/__/g, "/"),
     }
 }
 
@@ -431,8 +428,8 @@ export async function getPosts(
             response = await apiQuery(endpoint, {
                 searchParams: [
                     ["per_page", perPage],
-                    ["page", page]
-                ]
+                    ["page", page],
+                ],
             })
             const postsCurrentPage = await response.json()
             posts.push(...postsCurrentPage)
@@ -440,8 +437,11 @@ export async function getPosts(
     }
 
     // Published pages excluded from public views
-    const excludedSlugs = [BLOG_SLUG, covidCountryProfileSlug]
-    posts = posts.filter(post => !excludedSlugs.includes(post.slug))
+    const excludedSlugs = [
+        BLOG_SLUG,
+        ...countryProfileSpecs.map((spec) => spec.genericProfileSlug),
+    ]
+    posts = posts.filter((post) => !excludedSlugs.includes(post.slug))
 
     return limit ? posts.slice(0, limit) : posts
 }
@@ -449,21 +449,11 @@ export async function getPosts(
 export async function getPostType(search: number | string): Promise<string> {
     const paramName = typeof search === "number" ? "id" : "slug"
     const response = await apiQuery(`${OWID_API_ENDPOINT}/type`, {
-        searchParams: [[paramName, search]]
+        searchParams: [[paramName, search]],
     })
     const type = await response.json()
 
     return type
-}
-
-export async function getPost(id: number): Promise<any> {
-    const type = await getPostType(id)
-    const response = await apiQuery(
-        `${WP_API_ENDPOINT}/${getEndpointSlugFromType(type)}/${id}`
-    )
-    const post = await response.json()
-
-    return post
 }
 
 export async function getPostBySlug(slug: string): Promise<any[]> {
@@ -471,7 +461,7 @@ export async function getPostBySlug(slug: string): Promise<any[]> {
     const response = await apiQuery(
         `${WP_API_ENDPOINT}/${getEndpointSlugFromType(type)}`,
         {
-            searchParams: [["slug", slug]]
+            searchParams: [["slug", slug]],
         }
     )
     const postApiArray = await response.json()
@@ -481,17 +471,39 @@ export async function getPostBySlug(slug: string): Promise<any[]> {
     return postApiArray[0]
 }
 
+// the /revisions endpoint does not send back all the metadata required for
+// the proper rendering of the post (e.g. authors), hence the double request.
 export async function getLatestPostRevision(id: number): Promise<any> {
     const type = await getPostType(id)
-    const response = await apiQuery(
-        `${WP_API_ENDPOINT}/${getEndpointSlugFromType(type)}/${id}/revisions`,
+    const endpointSlug = getEndpointSlugFromType(type)
+
+    let response = await apiQuery(`${WP_API_ENDPOINT}/${endpointSlug}/${id}`, {
+        isAuthenticated: true,
+    })
+    const postApi = await response.json()
+
+    response = await apiQuery(
+        `${WP_API_ENDPOINT}/${endpointSlug}/${id}/revisions?per_page=1`,
         {
-            isAuthenticated: true
+            isAuthenticated: true,
         }
     )
-    const revisions = await response.json()
+    const revision = (await response.json())[0]
 
-    return revisions[0]
+    return {
+        ...revision,
+        authors_name: postApi.authors_name,
+        type: postApi.type,
+        path: postApi.path,
+        // revision.date holds the modified date and not the published date
+        // (visible in the admin sidebar), so it is not being used. The
+        // published date will only be correctly displayed when previewing
+        // unpublished posts. When previewing published posts, the current
+        // published date will be displayed, regardless of what is shown in the
+        // admin.
+        date: postApi.date,
+        postId: id,
+    }
 }
 
 export async function getRelatedCharts(
@@ -509,6 +521,32 @@ export async function getRelatedCharts(
         AND charts.config->>"$.isPublished" = "true"
         ORDER BY title ASC
     `)
+}
+
+export async function getBlockContent(id: number): Promise<string | undefined> {
+    const WP_GRAPHQL_ENDPOINT = `${WORDPRESS_URL}/wp/graphql`
+    const query = `
+    query getBlock($id: ID!) {
+        post(id: $id, idType: DATABASE_ID) {
+          content
+        }
+      }
+    `
+
+    const response = await fetch(WP_GRAPHQL_ENDPOINT, {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+            Accept: "application/json",
+        },
+        body: JSON.stringify({
+            query,
+            variables: { id },
+        }),
+    })
+    const json = await response.json()
+
+    return json.data.post?.content ?? undefined
 }
 
 export interface FullPost {
@@ -549,7 +587,7 @@ export async function getFullPost(
         relatedCharts:
             postApi.type === "page"
                 ? await getRelatedCharts(postApi.id)
-                : undefined
+                : undefined,
     }
 }
 
@@ -572,7 +610,7 @@ export async function getBlogIndex(): Promise<FullPost[]> {
     const posts = await getPosts(["post"])
 
     cachedPosts = Promise.all(
-        posts.map(post => {
+        posts.map((post) => {
             return getFullPost(post, true)
         })
     )
@@ -611,7 +649,7 @@ export async function getTables(): Promise<Map<string, TablepressTable>> {
         )
         cachedTables.set(tableId, {
             tableId: tableId,
-            data: data
+            data: data,
         })
     }
 

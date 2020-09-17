@@ -1,9 +1,10 @@
 import * as ReactDOMServer from "react-dom/server"
-import * as _ from "lodash"
+import * as lodash from "lodash"
 import { quote } from "shell-quote"
 import urljoin from "url-join"
 import * as settings from "settings"
 import * as shell from "shelljs"
+import * as util from "util"
 
 export interface ExecReturn {
     code: number
@@ -68,7 +69,7 @@ export function renderToHtmlPage(element: any): string {
 
 // Determine if input is suitable for use as a url slug
 export function isValidSlug(slug: any) {
-    return _.isString(slug) && slug.length > 1 && slug.match(/^[\w-]+$/)
+    return lodash.isString(slug) && slug.length > 1 && slug.match(/^[\w-]+$/)
 }
 
 export function shellEscape(s: string) {
@@ -76,13 +77,13 @@ export function shellEscape(s: string) {
 }
 
 export function csvEscape(value: any): string {
-    const valueStr = _.toString(value)
-    if (_.includes(valueStr, ",")) return `"${value.replace(/\"/g, '""')}"`
+    const valueStr = lodash.toString(value)
+    if (lodash.includes(valueStr, ",")) return `"${value.replace(/\"/g, '""')}"`
     else return value
 }
 
 export function csvRow(arr: string[]): string {
-    return arr.map(x => csvEscape(x)).join(",") + "\n"
+    return arr.map((x) => csvEscape(x)).join(",") + "\n"
 }
 
 export function absoluteUrl(path: string): string {
@@ -95,15 +96,21 @@ export function slugify(s: string) {
         .toLowerCase()
         .replace(/\s*\*.+\*/, "")
         .replace(/[^\w- ]+/g, "")
-    return _.trim(s).replace(/ +/g, "-")
+    return lodash.trim(s).replace(/ +/g, "-")
 }
 
 export const splitOnLastWord = (s: string) => {
     const endIndex = (s.lastIndexOf(" ") as number) + 1
     return {
         start: endIndex === 0 ? "" : s.substring(0, endIndex),
-        end: s.substring(endIndex)
+        end: s.substring(endIndex),
     }
+}
+
+export async function execFormatted(cmd: string, args: string[]) {
+    const formatCmd = util.format(cmd, ...args.map((s) => quote([s])))
+    console.log(formatCmd)
+    await exec(formatCmd)
 }
 
 import filenamify from "filenamify"

@@ -1,5 +1,5 @@
-import { ChartView } from "charts/ChartView"
-import { excludeUndefined, fetchText } from "charts/Util"
+import { GrapherView } from "grapher/core/GrapherView"
+import { excludeUndefined, fetchText } from "grapher/utils/Util"
 
 import { Figure, LoadProps } from "./Figure"
 import { splitURLintoPathAndQueryString } from "utils/client/url"
@@ -49,12 +49,12 @@ export class ChartFigure implements Figure {
             const html = await fetchText(this.props.configUrl)
             this.jsonConfig = readConfigFromHTML(html)
             this.container.classList.remove("grapherPreview")
-            ChartView.bootstrap({
+            GrapherView.bootstrap({
                 jsonConfig: this.jsonConfig,
                 containerNode: this.container,
                 isEmbed: true,
                 queryStr: this.props.queryStr,
-                globalEntitySelection: loadProps.globalEntitySelection
+                globalEntitySelection: loadProps.globalEntitySelection,
             })
         }
     }
@@ -66,7 +66,7 @@ export class ChartFigure implements Figure {
             container.querySelectorAll<HTMLElement>("*[data-grapher-src]")
         )
         return excludeUndefined(
-            elements.map(element => {
+            elements.map((element) => {
                 const dataSrc = element.getAttribute("data-grapher-src")
                 if (!dataSrc) return undefined
                 const { path, queryString } = splitURLintoPathAndQueryString(
@@ -75,7 +75,7 @@ export class ChartFigure implements Figure {
                 return new ChartFigure({
                     configUrl: path,
                     queryStr: queryString,
-                    container: element
+                    container: element,
                 })
             })
         )

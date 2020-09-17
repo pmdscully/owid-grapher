@@ -1,7 +1,7 @@
 import { SectionHeading } from "./../client/SectionHeading/SectionHeading"
 import * as cheerio from "cheerio"
 import urlSlug from "url-slug"
-import * as _ from "lodash"
+import * as lodash from "lodash"
 import * as React from "react"
 import * as ReactDOMServer from "react-dom/server"
 import { HTTPS_ONLY } from "serverSettings"
@@ -13,17 +13,21 @@ import * as path from "path"
 import { renderBlocks } from "site/client/blocks"
 import {
     RelatedCharts,
-    RelatedChart
+    RelatedChart,
 } from "site/client/blocks/RelatedCharts/RelatedCharts"
 import { initMathJax } from "./MathJax"
-import { bakeGlobalEntityControl } from "site/client/global-entity/GlobalEntityControl"
+import { bakeGlobalEntityControl } from "site/globalEntityControl/GlobalEntityControl"
 import { Footnote } from "site/client/Footnote"
 import { Country } from "utils/countries"
-import { covidDefaultCountryPlaceholder } from "./covid/CovidConstants"
-import { covidDashboardSlug } from "charts/covidDataExplorer/CovidConstants"
-import { LoadingIndicator } from "site/client/LoadingIndicator"
+import { covidDashboardSlug } from "explorer/covidExplorer/CovidConstants"
+import { LoadingIndicator } from "grapher/loadingIndicator/LoadingIndicator"
 import { PROMINENT_LINK_CLASSNAME } from "site/client/blocks/ProminentLink/ProminentLink"
-import { replaceChartIframesWithExplorerIframes } from "./bakeCovidExplorerRedirects"
+import { replaceChartIframesWithExplorerIframes } from "explorer/covidExplorer/bakeCovidExplorerRedirects"
+import { SubNavId } from "./views/SiteSubnavigation"
+import {
+    countryProfileDefaultCountryPlaceholder,
+    countryProfileSpecs,
+} from "site/server/countryProfileProjects"
 
 // A modifed FontAwesome icon
 const INTERACTIVE_ICON_SVG = `<svg aria-hidden="true" focusable="false" data-prefix="fas" data-icon="hand-pointer" class="svg-inline--fa fa-hand-pointer fa-w-14" role="img" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 617">
@@ -71,10 +75,7 @@ function extractLatex(html: string): [string, string[]] {
     const latexBlocks: string[] = []
     html = html.replace(/\[latex\]([\s\S]*?)\[\/latex\]/gm, (_, latex) => {
         latexBlocks.push(
-            latex
-                .replace("\\[", "")
-                .replace("\\]", "")
-                .replace(/\$\$/g, "")
+            latex.replace("\\[", "").replace("\\]", "").replace(/\$\$/g, "")
         )
         return "[latex]"
     })
@@ -177,8 +178,9 @@ export async function formatWordpressPost(
     // Related charts
     // Mimicking SSR output of additional information block from PHP
     if (
-        // HACK
-        post.slug !== "coronavirus" &&
+        !countryProfileSpecs.some(
+            (spec) => post.slug === spec.landingPageSlug
+        ) &&
         post.relatedCharts &&
         post.relatedCharts.length !== 0
     ) {
@@ -247,7 +249,7 @@ export async function formatWordpressPost(
     if (grapherExports) {
         const grapherIframes = $("iframe")
             .toArray()
-            .filter(el => (el.attribs["src"] || "").match(/\/grapher\//))
+            .filter((el) => (el.attribs["src"] || "").match(/\/grapher\//))
         for (const el of grapherIframes) {
             const $el = $(el)
             const src = el.attribs["src"].trim()
@@ -296,7 +298,7 @@ export async function formatWordpressPost(
     // Replace explorer iframes with iframeless embed
     const explorerIframes = $("iframe")
         .toArray()
-        .filter(el => (el.attribs["src"] || "").includes(covidDashboardSlug))
+        .filter((el) => (el.attribs["src"] || "").includes(covidDashboardSlug))
     for (const el of explorerIframes) {
         const $el = $(el)
         const src = el.attribs["src"].trim()
@@ -373,7 +375,7 @@ export async function formatWordpressPost(
             const originalSrc = path.format({
                 dir: parsedPath.dir,
                 name: originalFilename,
-                ext: parsedPath.ext
+                ext: parsedPath.ext,
             })
             el.attribs["data-high-res-src"] = originalSrc
         } else {
@@ -388,7 +390,7 @@ export async function formatWordpressPost(
 
         // Add alt attribute
         if (!el.attribs["alt"]) {
-            el.attribs["alt"] = _.capitalize(
+            el.attribs["alt"] = lodash.capitalize(
                 originalFilename.replace(/[-_]/g, " ")
             )
         }
@@ -424,14 +426,14 @@ export async function formatWordpressPost(
                 tocHeadings.push({
                     text: headingText,
                     slug: "footnotes",
-                    isSubheading: false
+                    isSubheading: false,
                 })
             } else if (!$heading.is("h1") && !$heading.is("h4")) {
                 if ($heading.is("h2")) {
                     const tocHeading = {
                         text: headingText,
                         slug: slug,
-                        isSubheading: false
+                        isSubheading: false,
                     }
                     tocHeadings.push(tocHeading)
                     parentHeading = tocHeading
@@ -445,7 +447,7 @@ export async function formatWordpressPost(
                         text: headingText,
                         html: $heading.html() || undefined,
                         slug: slug,
-                        isSubheading: true
+                        isSubheading: true,
                     })
                 }
             }
@@ -477,7 +479,7 @@ export async function formatWordpressPost(
         return {
             wrapper: $columns,
             first: $columns.children().first(),
-            last: $columns.children().last()
+            last: $columns.children().last(),
         }
     }
 
@@ -495,11 +497,9 @@ export async function formatWordpressPost(
 
     // Wrap content demarcated by headings into section blocks
     // and automatically divide content into columns
-    const sectionStarts = [
-        $("body")
-            .children()
-            .get(0)
-    ].concat($("body > h2").toArray())
+    const sectionStarts = [$("body").children().get(0)].concat(
+        $("body > h2").toArray()
+    )
     for (const start of sectionStarts) {
         const $start = $(start)
         const $section = $("<section>")
@@ -522,7 +522,7 @@ export async function formatWordpressPost(
                         >
                             <div
                                 dangerouslySetInnerHTML={{
-                                    __html: $.html($el)
+                                    __html: $.html($el),
                                 }}
                             />
                         </SectionHeading>
@@ -622,14 +622,10 @@ export async function formatWordpressPost(
         html: getHtmlContentWithStyles($),
         footnotes: footnotes,
         references: references,
-        excerpt:
-            post.excerpt ||
-            $("p")
-                .first()
-                .text(),
+        excerpt: post.excerpt || $("p").first().text(),
         imageUrl: post.imageUrl,
         tocHeadings: tocHeadings,
-        relatedCharts: post.relatedCharts
+        relatedCharts: post.relatedCharts,
     }
 }
 
@@ -650,7 +646,7 @@ export interface FormattingOptions {
     toc?: boolean
     hideAuthors?: boolean
     bodyClassName?: string
-    subnavId?: string
+    subnavId?: SubNavId
     subnavCurrentId?: string
     raw?: boolean
     hideDonateFooter?: boolean
@@ -674,7 +670,7 @@ function parseFormattingOptions(text: string): FormattingOptions {
     const options: { [key: string]: string | boolean } = {}
     text.split(/\s+/)
         // filter out empty strings
-        .filter(s => s && s.length > 0)
+        .filter((s) => s && s.length > 0)
         // populate options object
         .forEach((option: string) => {
             const [name, value] = option.split(":") as [
@@ -690,6 +686,18 @@ function parseFormattingOptions(text: string): FormattingOptions {
     return options
 }
 
+export function formatLinks(html: string): string {
+    // Standardize urls
+    return html
+        .replace(new RegExp(WORDPRESS_URL, "g"), BAKED_BASE_URL)
+        .replace(new RegExp("https?://owid.cloud", "g"), BAKED_BASE_URL)
+        .replace(new RegExp("https?://ourworldindata.org", "g"), BAKED_BASE_URL)
+}
+
+export function formatReusableBlock(html: string): string {
+    return formatLinks(html)
+}
+
 export async function formatPost(
     post: FullPost,
     formattingOptions: FormattingOptions,
@@ -697,11 +705,7 @@ export async function formatPost(
 ): Promise<FormattedPost> {
     let html = post.content
 
-    // Standardize urls
-    html = html
-        .replace(new RegExp(WORDPRESS_URL, "g"), BAKED_BASE_URL)
-        .replace(new RegExp("https?://owid.cloud", "g"), BAKED_BASE_URL)
-        .replace(new RegExp("https?://ourworldindata.org", "g"), BAKED_BASE_URL)
+    html = formatLinks(html)
 
     // No formatting applied, plain source HTML returned
     if (formattingOptions.raw) {
@@ -721,14 +725,14 @@ export async function formatPost(
             excerpt: post.excerpt || "",
             imageUrl: post.imageUrl,
             tocHeadings: [],
-            relatedCharts: post.relatedCharts
+            relatedCharts: post.relatedCharts,
         }
     } else {
         // Override formattingOptions if specified in the post (as an HTML comment)
         const options: FormattingOptions = Object.assign(
             {
                 toc: post.type === "page",
-                footnotes: true
+                footnotes: true,
             },
             formattingOptions
         )
@@ -742,7 +746,7 @@ export function formatCountryProfile(
 ): FormattedPost {
     // Localize country selector
     const htmlWithLocalizedCountrySelector = post.html.replace(
-        covidDefaultCountryPlaceholder,
+        countryProfileDefaultCountryPlaceholder,
         country.code
     )
 
@@ -764,7 +768,7 @@ export function formatAuthors(authors: string[], requireMax?: boolean): string {
 
     let authorsText = authors.slice(0, -1).join(", ")
     if (authorsText.length === 0) authorsText = authors[0]
-    else authorsText += ` and ${_.last(authors)}`
+    else authorsText += ` and ${lodash.last(authors)}`
 
     return authorsText
 }
@@ -773,6 +777,6 @@ export function formatDate(date: Date): string {
     return date.toLocaleDateString("en-US", {
         year: "numeric",
         month: "long",
-        day: "2-digit"
+        day: "2-digit",
     })
 }

@@ -1,7 +1,7 @@
 import * as React from "react"
 import ReactDOM from "react-dom"
 import { useState, useEffect, useRef } from "react"
-import { Grapher } from "site/client/Grapher"
+import { GrapherPageUtils } from "site/client/GrapherPageUtils"
 
 export interface RelatedChart {
     title: string
@@ -18,7 +18,9 @@ export const RelatedCharts = ({ charts }: { charts: RelatedChart[] }) => {
     useEffect(() => {
         if (refChartContainer.current) {
             // Track newly injected <figure> elements in embedder
-            Grapher.embedder.addFiguresFromDOM(refChartContainer.current)
+            GrapherPageUtils.embedder.addFiguresFromDOM(
+                refChartContainer.current
+            )
         }
     }, [currentChart])
 
@@ -27,7 +29,7 @@ export const RelatedCharts = ({ charts }: { charts: RelatedChart[] }) => {
             <div className="wp-block-columns is-style-sticky-right">
                 <div className="wp-block-column">
                     <ul>
-                        {charts.map(chart => (
+                        {charts.map((chart) => (
                             <li
                                 className={
                                     currentChart &&
@@ -39,7 +41,7 @@ export const RelatedCharts = ({ charts }: { charts: RelatedChart[] }) => {
                             >
                                 <a
                                     href={`/grapher/${chart.slug}`}
-                                    onClick={event => {
+                                    onClick={(event) => {
                                         // Allow opening charts in new tab/window with ⌘+CLICK
                                         if (
                                             !event.metaKey &&
@@ -48,7 +50,7 @@ export const RelatedCharts = ({ charts }: { charts: RelatedChart[] }) => {
                                         ) {
                                             setCurrentChart({
                                                 title: chart.title,
-                                                slug: chart.slug
+                                                slug: chart.slug,
                                             })
                                             event.preventDefault()
                                         }

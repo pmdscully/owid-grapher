@@ -1,16 +1,16 @@
 import * as React from "react"
 import ReactDOM from "react-dom"
-import { Grapher } from "site/client/Grapher"
+import { GrapherPageUtils } from "site/client/GrapherPageUtils"
 import { observer } from "mobx-react"
 import { computed } from "mobx"
 import {
     strToQueryParams,
     queryParamsToStr,
     splitURLintoPathAndQueryString,
-    QueryParams
+    QueryParams,
 } from "utils/client/url"
-import { EntityUrlBuilder } from "charts/ChartUrl"
-import { union, isEmpty, getAttributesOfHTMLElement } from "charts/Util"
+import { union, isEmpty, getAttributesOfHTMLElement } from "grapher/utils/Util"
+import { EntityUrlBuilder } from "grapher/core/EntityUrlBuilder"
 
 export const PROMINENT_LINK_CLASSNAME = "wp-block-owid-prominent-link"
 
@@ -54,8 +54,8 @@ class ProminentLink extends React.Component<{
     }
 
     @computed private get entitiesInGlobalEntitySelection(): string[] {
-        return Grapher.globalEntitySelection.selectedEntities.map(
-            entity => entity.code
+        return GrapherPageUtils.globalEntitySelection.selectedEntities.map(
+            (entity) => entity.code
         )
     }
 
@@ -74,8 +74,8 @@ class ProminentLink extends React.Component<{
         return {
             ...originalURLQueryParams,
             ...(!isEmpty(updatedEntityQueryParam) && {
-                country: updatedEntityQueryParam
-            })
+                country: updatedEntityQueryParam,
+            }),
         }
     }
 
@@ -97,7 +97,7 @@ class ProminentLink extends React.Component<{
 export const renderProminentLink = () => {
     document
         .querySelectorAll<HTMLElement>(`.${PROMINENT_LINK_CLASSNAME}`)
-        .forEach(el => {
+        .forEach((el) => {
             const anchorTag = el.querySelector("a")
             if (!anchorTag) return
 

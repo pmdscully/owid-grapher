@@ -5,7 +5,7 @@ import * as ReactDOMServer from "react-dom/server"
 import AnimateHeight from "react-animate-height"
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome"
 import { faAngleRight } from "@fortawesome/free-solid-svg-icons/faAngleRight"
-import { Grapher } from "site/client/Grapher"
+import { GrapherPageUtils } from "site/client/GrapherPageUtils"
 
 export const CLASS_NAME = "wp-block-owid-additional-information"
 const VARIATION_MERGE_LEFT = "merge-left"
@@ -25,7 +25,7 @@ const AdditionalInformation = ({
     title,
     image,
     variation,
-    defaultOpen
+    defaultOpen,
 }: {
     content: string | null
     title: string | null
@@ -43,7 +43,7 @@ const AdditionalInformation = ({
     useEffect(() => {
         if (refContainer.current) {
             // Trigger embedder check for new figures that may have become visible.
-            Grapher.embedder.addFiguresFromDOM(refContainer.current)
+            GrapherPageUtils.embedder.addFiguresFromDOM(refContainer.current)
         }
         // Expands accordions for print media.
         window.addEventListener("beforeprint", () => {
@@ -120,7 +120,7 @@ const AdditionalInformation = ({
 export default AdditionalInformation
 
 export const render = ($: CheerioStatic) => {
-    $("block[type='additional-information']").each(function(
+    $("block[type='additional-information']").each(function (
         this: CheerioElement
     ) {
         const $block = $(this)
@@ -128,10 +128,7 @@ export const render = ($: CheerioStatic) => {
             ? VARIATION_MERGE_LEFT
             : VARIATION_FULL_WIDTH
         const title =
-            $block
-                .find("h3")
-                .remove()
-                .text() || "Additional information"
+            $block.find("h3").remove().text() || "Additional information"
         const image =
             variation === VARIATION_MERGE_LEFT
                 ? $block
@@ -164,25 +161,28 @@ export const render = ($: CheerioStatic) => {
 }
 
 export const hydrate = () => {
-    document.querySelectorAll<HTMLElement>(`.${CLASS_NAME}`).forEach(block => {
-        const blockWrapper = block.parentElement
-        const titleEl = block.querySelector("h3")
-        const title = titleEl ? titleEl.textContent : null
-        const variation = block.getAttribute("data-variation") || ""
-        const defaultOpen = block.getAttribute("data-default-open") === "true"
-        const figureEl = block.querySelector(".content-wrapper > figure")
-        const image = figureEl ? figureEl.innerHTML : null
-        const contentEl = block.querySelector(".content")
-        const content = contentEl ? contentEl.innerHTML : null
-        ReactDOM.hydrate(
-            <AdditionalInformation
-                content={content}
-                title={title}
-                image={image}
-                variation={variation}
-                defaultOpen={defaultOpen}
-            />,
-            blockWrapper
-        )
-    })
+    document
+        .querySelectorAll<HTMLElement>(`.${CLASS_NAME}`)
+        .forEach((block) => {
+            const blockWrapper = block.parentElement
+            const titleEl = block.querySelector("h3")
+            const title = titleEl ? titleEl.textContent : null
+            const variation = block.getAttribute("data-variation") || ""
+            const defaultOpen =
+                block.getAttribute("data-default-open") === "true"
+            const figureEl = block.querySelector(".content-wrapper > figure")
+            const image = figureEl ? figureEl.innerHTML : null
+            const contentEl = block.querySelector(".content")
+            const content = contentEl ? contentEl.innerHTML : null
+            ReactDOM.hydrate(
+                <AdditionalInformation
+                    content={content}
+                    title={title}
+                    image={image}
+                    variation={variation}
+                    defaultOpen={defaultOpen}
+                />,
+                blockWrapper
+            )
+        })
 }

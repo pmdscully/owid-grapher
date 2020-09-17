@@ -1,9 +1,9 @@
-import * as _ from "lodash"
+import * as lodash from "lodash"
 import { Writable } from "stream"
 
 import * as db from "db/db"
 import { csvRow } from "utils/server/serverUtil"
-import { OwidVariableDisplaySettings } from "charts/owidData/OwidVariable"
+import { LegacyVariableDisplayConfigInterface } from "owidTable/LegacyVariableCode"
 
 export namespace Variable {
     export interface Row {
@@ -12,7 +12,7 @@ export namespace Variable {
         unit: string
         description: string
         columnOrder: number
-        display: OwidVariableDisplaySettings
+        display: LegacyVariableDisplayConfigInterface
     }
 
     export type Field = keyof Row
@@ -65,13 +65,13 @@ export async function getVariableData(variableIds: number[]): Promise<any> {
             dataPublisherSource: sourceDescription.dataPublisherSource || "",
             link: sourceDescription.link || "",
             retrievedData: sourceDescription.retrievedData || "",
-            additionalInfo: sourceDescription.additionalInfo || ""
+            additionalInfo: sourceDescription.additionalInfo || "",
         }
-        data.variables[row.id] = _.extend(
+        data.variables[row.id] = lodash.extend(
             {
                 years: [],
                 entities: [],
-                values: []
+                values: [],
             },
             row
         )
@@ -91,7 +91,7 @@ export async function getVariableData(variableIds: number[]): Promise<any> {
         if (data.entityKey[row.entityId] === undefined) {
             data.entityKey[row.entityId] = {
                 name: row.entityName,
-                code: row.entityCode
+                code: row.entityCode,
             }
         }
     }
@@ -113,12 +113,14 @@ export async function writeVariableCSV(
         [variableIds]
     )
 
-    const dataQuery: Promise<{
-        variableId: number
-        entity: string
-        year: number
-        value: string
-    }[]> = db.query(
+    const dataQuery: Promise<
+        {
+            variableId: number
+            entity: string
+            year: number
+            value: string
+        }[]
+    > = db.query(
         `
         SELECT
             data_values.variableId AS variableId,
@@ -139,18 +141,21 @@ export async function writeVariableCSV(
     )
 
     let variables = await variableQuery
-    const variablesById = _.keyBy(variables, "id")
+    const variablesById = lodash.keyBy(variables, "id")
 
     // Throw an error if not all variables exist
     if (variables.length !== variableIds.length) {
-        const fetchedVariableIds = variables.map(v => v.id)
-        const missingVariables = _.difference(variableIds, fetchedVariableIds)
+        const fetchedVariableIds = variables.map((v) => v.id)
+        const missingVariables = lodash.difference(
+            variableIds,
+            fetchedVariableIds
+        )
         throw Error(`Variable IDs do not exist: ${missingVariables.join(", ")}`)
     }
 
-    variables = variableIds.map(variableId => variablesById[variableId])
+    variables = variableIds.map((variableId) => variablesById[variableId])
 
-    const columns = ["Entity", "Year"].concat(variables.map(v => v.name))
+    const columns = ["Entity", "Year"].concat(variables.map((v) => v.name))
     stream.write(csvRow(columns))
 
     const variableColumnIndex: { [id: number]: number } = {}

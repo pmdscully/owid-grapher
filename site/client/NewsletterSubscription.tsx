@@ -3,16 +3,19 @@ import { useState } from "react"
 import { faEnvelopeOpenText } from "@fortawesome/free-solid-svg-icons/faEnvelopeOpenText"
 import { faTimes } from "@fortawesome/free-solid-svg-icons/faTimes"
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome"
-import { Analytics } from "./Analytics"
+import { Analytics } from "grapher/core/Analytics"
+import { ENV } from "settings"
+
+const analytics = new Analytics(ENV)
 
 export enum NewsletterSubscriptionContext {
     Homepage = "homepage",
     MobileMenu = "mobile-menu",
-    Floating = "floating"
+    Floating = "floating",
 }
 
 export const NewsletterSubscription = ({
-    context
+    context,
 }: {
     context?: NewsletterSubscriptionContext
 }) => {
@@ -56,7 +59,7 @@ export const NewsletterSubscription = ({
 }
 
 export const NewsletterSubscriptionForm = ({
-    context
+    context,
 }: {
     context?: NewsletterSubscriptionContext
 }) => {
@@ -75,7 +78,7 @@ export const NewsletterSubscriptionForm = ({
             setFrequencies([e.target.value, ...frequencies])
         } else {
             setFrequencies(
-                frequencies.filter(frequency => frequency !== e.target.value)
+                frequencies.filter((frequency) => frequency !== e.target.value)
             )
         }
     }
@@ -149,7 +152,7 @@ export const NewsletterSubscriptionForm = ({
                     className="owid-inline-button"
                     disabled={!isSubmittable}
                     onClick={() =>
-                        Analytics.logSiteClick(
+                        analytics.logSiteClick(
                             `Subscribe [${context ?? "other-contexts"}]`,
                             undefined,
                             "newsletter-subscribe"

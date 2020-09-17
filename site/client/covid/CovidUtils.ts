@@ -1,8 +1,7 @@
-import { maxBy, dateDiffInDays, formatValue } from "charts/Util"
+import { maxBy, dateDiffInDays, formatValue } from "grapher/utils/Util"
 import { utcFormat } from "d3-time-format"
 
-import { TickFormattingOptions } from "charts/TickFormattingOptions"
-import { SortOrder } from "charts/SortOrder"
+import { TickFormattingOptions, SortOrder } from "grapher/core/GrapherConstants"
 
 import {
     CovidSeries,
@@ -10,7 +9,7 @@ import {
     CovidDoublingRange,
     CovidSortKey,
     CovidCountryDatum,
-    CovidSortAccessor
+    CovidSortAccessor,
 } from "./CovidTypes"
 
 export function inverseSortOrder(order: SortOrder): SortOrder {
@@ -49,14 +48,14 @@ export function getDoublingRange(
     accessor: (d: CovidDatum) => number | undefined
 ): CovidDoublingRange | undefined {
     if (series.length > 1) {
-        const latestDay = maxBy(series, d => d.date) as CovidDatum
+        const latestDay = maxBy(series, (d) => d.date) as CovidDatum
         const latestValue = accessor(latestDay)
         if (latestValue === undefined) return undefined
-        const filteredSeries = series.filter(d => {
+        const filteredSeries = series.filter((d) => {
             const value = accessor(d)
             return value && value <= latestValue / 2
         })
-        const halfDay = maxBy(filteredSeries, d => d.date)
+        const halfDay = maxBy(filteredSeries, (d) => d.date)
         if (halfDay === undefined) return undefined
         const halfValue = accessor(halfDay)
         if (halfValue === undefined) return undefined
@@ -64,7 +63,7 @@ export function getDoublingRange(
             latestDay,
             halfDay,
             length: dateDiffInDays(latestDay.date, halfDay.date),
-            ratio: latestValue / halfValue
+            ratio: latestValue / halfValue,
         }
     }
     return undefined
@@ -85,5 +84,5 @@ export const sortAccessors: Record<CovidSortKey, CovidSortAccessor> = {
             ? d.deathDoublingRange.length - d.deathDoublingRange.ratio * 1e-4
             : undefined,
     totalTests: (d: CovidCountryDatum) => d.latestWithTests?.tests?.totalTests,
-    testDate: (d: CovidCountryDatum) => d.latestWithTests?.date
+    testDate: (d: CovidCountryDatum) => d.latestWithTests?.date,
 }

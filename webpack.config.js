@@ -12,8 +12,8 @@ module.exports = (env, argv) => {
     return {
         context: __dirname,
         entry: {
-            admin: "./admin/client/admin.entry.ts",
-            owid: "./site/client/owid.entry.ts"
+            admin: "./adminSite/client/admin.entry.ts",
+            owid: "./site/client/owid.entry.ts",
         },
         optimization: {
             splitChunks: {
@@ -21,21 +21,21 @@ module.exports = (env, argv) => {
                     commons: {
                         name: "commons",
                         chunks: "all",
-                        minChunks: 2
-                    }
-                }
+                        minChunks: 2,
+                    },
+                },
             },
             minimize: isProduction,
-            minimizer: [new TerserJSPlugin(), new OptimizeCSSAssetsPlugin()]
+            minimizer: [new TerserJSPlugin(), new OptimizeCSSAssetsPlugin()],
         },
         output: {
             path: path.join(__dirname, "dist/webpack"),
-            filename: "js/[name].js"
+            filename: "js/[name].js",
             //filename: (isProduction ? "js/[name].bundle.[hash].js" : "js/[name].js")
         },
         resolve: {
             extensions: [".ts", ".tsx", ".js", ".css"],
-            modules: ["node_modules", __dirname]
+            modules: ["node_modules", __dirname],
         },
         module: {
             rules: [
@@ -45,22 +45,27 @@ module.exports = (env, argv) => {
                     exclude: /serverSettings/,
                     options: {
                         transpileOnly: true,
-                        configFile: path.join(__dirname, "tsconfig.client.json")
-                    }
+                        configFile: path.join(
+                            __dirname,
+                            "tsconfig.client.json"
+                        ),
+                    },
                 },
                 {
                     test: /\.s?css$/,
                     use: [
                         MiniCssExtractPlugin.loader,
-                        "css-loader",
+                        "css-loader?url=false",
                         "postcss-loader",
                         {
                             loader: "sass-loader",
                             options: {
-                                outputStyle: "expanded" // Needed so autoprefixer comments are included
-                            }
-                        }
-                    ]
+                                sassOptions: {
+                                    outputStyle: "expanded", // Needed so autoprefixer comments are included
+                                },
+                            },
+                        },
+                    ],
                 },
                 {
                     test: /\.(jpe?g|gif|png|eot|woff|ttf|svg|woff2)$/,
@@ -68,10 +73,10 @@ module.exports = (env, argv) => {
                     options: {
                         limit: 10000,
                         useRelativePaths: true,
-                        publicPath: "../"
-                    }
-                }
-            ]
+                        publicPath: "../",
+                    },
+                },
+            ],
         },
         plugins: [
             // This plugin extracts css files required in the entry points
@@ -87,7 +92,7 @@ module.exports = (env, argv) => {
 
             // This plugin loads settings from .env so we can import them
             // Note that this means the settings become part of the client-side JS at webpack build time, not at server run time
-            new Dotenv()
+            new Dotenv(),
         ],
         devServer: {
             host: "localhost",
@@ -99,8 +104,8 @@ module.exports = (env, argv) => {
                 "Access-Control-Allow-Methods":
                     "GET, POST, PUT, DELETE, PATCH, OPTIONS",
                 "Access-Control-Allow-Headers":
-                    "X-Requested-With, content-type, Authorization"
-            }
-        }
+                    "X-Requested-With, content-type, Authorization",
+            },
+        },
     }
 }

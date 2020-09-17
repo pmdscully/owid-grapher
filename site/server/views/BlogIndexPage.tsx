@@ -1,12 +1,12 @@
 import * as React from "react"
-import * as _ from "lodash"
+import * as lodash from "lodash"
 
 import * as settings from "settings"
 import { Head } from "./Head"
 import { SiteHeader } from "./SiteHeader"
 import { SiteFooter } from "./SiteFooter"
-import { formatAuthors, formatDate } from "../formatting"
-import { FullPost } from "../../../db/wpdb"
+import { formatAuthors, formatDate } from "site/server/formatting"
+import { FullPost } from "db/wpdb"
 
 export const BlogIndexPage = (props: {
     posts: FullPost[]
@@ -14,7 +14,7 @@ export const BlogIndexPage = (props: {
     numPages: number
 }) => {
     const { posts, pageNum, numPages } = props
-    const pageNums = _.range(1, numPages + 1)
+    const pageNums = lodash.range(1, numPages + 1)
     const pageTitle = "Latest publications"
 
     return (
@@ -33,11 +33,16 @@ export const BlogIndexPage = (props: {
                     <div className="site-content">
                         <h2>{pageTitle}</h2>
                         <ul className="posts">
-                            {posts.map(post => (
+                            {posts.map((post) => (
                                 <li key={post.slug} className="post">
                                     <a href={`/${post.path}`}>
                                         {post.imageUrl && (
-                                            <img src={post.imageUrl} />
+                                            <div
+                                                className="cover-image"
+                                                style={{
+                                                    backgroundImage: `url(${post.imageUrl})`,
+                                                }}
+                                            />
                                         )}
                                         <h3>{post.title}</h3>
                                         <div className="entry-meta">
@@ -56,7 +61,7 @@ export const BlogIndexPage = (props: {
                                 Posts navigation
                             </h2>
                             <div className="nav-link">
-                                {pageNums.map(num => (
+                                {pageNums.map((num) => (
                                     <a
                                         key={num}
                                         className={

@@ -1,4 +1,4 @@
-import * as _ from "lodash"
+import * as lodash from "lodash"
 import parseUrl from "url-parse"
 import * as db from "db/db"
 import { getVariableData } from "db/model/Variable"
@@ -8,9 +8,9 @@ import md5 from "md5"
 
 declare var global: any
 global.window = { location: { search: "" } }
-global.App = { isEditor: false }
 
-import { ChartConfig, ChartConfigProps } from "charts/ChartConfig"
+import { GrapherInterface } from "grapher/core/GrapherInterface"
+import { Grapher } from "grapher/core/Grapher"
 
 export async function getChartsAndRedirectsBySlug() {
     const { chartsBySlug, chartsById } = await getChartsBySlug()
@@ -27,7 +27,7 @@ export async function getChartsAndRedirectsBySlug() {
 }
 
 export async function getChartsBySlug() {
-    const chartsBySlug: Map<string, ChartConfigProps> = new Map()
+    const chartsBySlug: Map<string, GrapherInterface> = new Map()
     const chartsById = new Map()
 
     const chartsQuery = db.query(`SELECT * FROM charts`)
@@ -41,7 +41,7 @@ export async function getChartsBySlug() {
 }
 
 export async function bakeChartToImage(
-    jsonConfig: ChartConfigProps,
+    jsonConfig: GrapherInterface,
     outDir: string,
     slug: string,
     queryStr: string = "",
@@ -51,7 +51,10 @@ export async function bakeChartToImage(
 ) {
     // the type definition for url.query is wrong (bc we have query string parsing disabled),
     // so we have to explicitly cast it
-    const chart = new ChartConfig(jsonConfig, { queryStr })
+    const chart = new Grapher(
+        { ...jsonConfig, manuallyProvideData: true },
+        { queryStr }
+    )
     chart.isExporting = true
     const { width, height } = chart.idealBounds
     const outPath = `${outDir}/${slug}${queryStr ? "-" + md5(queryStr) : ""}_v${
@@ -61,7 +64,7 @@ export async function bakeChartToImage(
 
     if (fs.existsSync(outPath) && !overwriteExisting) return
 
-    const variableIds = _.uniq(chart.dimensions.map(d => d.variableId))
+    const variableIds = lodash.uniq(chart.dimensions.map((d) => d.variableId))
     const vardata = await getVariableData(variableIds)
     chart.receiveData(vardata)
 
@@ -82,7 +85,7 @@ export async function bakeChartsToImages(
 
     for (const urlStr of chartUrls) {
         const url = parseUrl(urlStr)
-        const slug = _.last(url.pathname.split("/")) as string
+        const slug = lodash.last(url.pathname.split("/")) as string
         const jsonConfig = chartsBySlug.get(slug)
         if (jsonConfig) {
             bakeChartToImage(

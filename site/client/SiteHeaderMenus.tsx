@@ -5,13 +5,13 @@ import {
     action,
     reaction,
     runInAction,
-    IReactionDisposer
+    IReactionDisposer,
 } from "mobx"
 import { observer } from "mobx-react"
 import { HeaderSearch } from "./HeaderSearch"
 import { CategoryWithEntries, EntryMeta } from "db/wpdb"
 import classnames from "classnames"
-import { find, flatten } from "charts/Util"
+import { flatten } from "grapher/utils/Util"
 import { bind } from "decko"
 
 import { BAKED_BASE_URL } from "settings"
@@ -27,7 +27,7 @@ import { faEnvelopeOpenText } from "@fortawesome/free-solid-svg-icons/faEnvelope
 import { AmazonMenu } from "./AmazonMenu"
 import {
     NewsletterSubscriptionForm,
-    NewsletterSubscriptionContext
+    NewsletterSubscriptionContext,
 } from "./NewsletterSubscription"
 
 @observer
@@ -141,7 +141,7 @@ export class Header extends React.Component<{
                             <a
                                 href="/#entries"
                                 className={classnames("topics-button", {
-                                    active: this.dropdownIsOpen
+                                    active: this.dropdownIsOpen,
                                 })}
                                 onMouseEnter={() =>
                                     this.scheduleOpenTimeout(200)
@@ -318,8 +318,8 @@ const allEntries = (category: CategoryWithEntries): EntryMeta[] => {
     return [
         ...category.entries,
         ...flatten(
-            category.subcategories.map(subcategory => subcategory.entries)
-        )
+            category.subcategories.map((subcategory) => subcategory.entries)
+        ),
     ]
 }
 
@@ -339,9 +339,8 @@ export class DesktopTopicsMenu extends React.Component<{
 
     @bind onActivate(categorySlug: string) {
         if (categorySlug) {
-            const category = find(
-                this.props.categories,
-                c => c.slug === categorySlug
+            const category = this.props.categories.find(
+                (c) => c.slug === categorySlug
             )
             if (category) this.setCategory(category)
         }
@@ -349,9 +348,8 @@ export class DesktopTopicsMenu extends React.Component<{
 
     @bind onDeactivate(categorySlug: string) {
         if (categorySlug) {
-            const category = find(
-                this.props.categories,
-                c => c.slug === categorySlug
+            const category = this.props.categories.find(
+                (c) => c.slug === categorySlug
             )
             if (category === this.activeCategory) this.setCategory(undefined)
         }
@@ -378,7 +376,7 @@ export class DesktopTopicsMenu extends React.Component<{
         return (
             <div
                 className={classnames("topics-dropdown", sizeClass, {
-                    open: isOpen
+                    open: isOpen,
                 })}
                 onMouseEnter={onMouseEnter}
                 onMouseLeave={onMouseLeave}
@@ -394,7 +392,7 @@ export class DesktopTopicsMenu extends React.Component<{
                         }
                     >
                         <ul>
-                            {categories.map(category => (
+                            {categories.map((category) => (
                                 <li
                                     key={category.slug}
                                     className={
@@ -443,7 +441,7 @@ export class DesktopTopicsMenu extends React.Component<{
                 </div>
                 <ul className="submenu" ref={this.submenuRef}>
                     {activeCategory &&
-                        allEntries(activeCategory).map(entry =>
+                        allEntries(activeCategory).map((entry) =>
                             renderEntry(entry)
                         )}
                 </ul>
@@ -472,7 +470,7 @@ export class MobileTopicsMenu extends React.Component<{
                     <li className="header">
                         <h2>Topics</h2>
                     </li>
-                    {categories.map(category => (
+                    {categories.map((category) => (
                         <li
                             key={category.slug}
                             className={`category ${
@@ -486,7 +484,7 @@ export class MobileTopicsMenu extends React.Component<{
                                     </span>
                                     <span className="entries-muted">
                                         {allEntries(category)
-                                            .map(entry => entry.title)
+                                            .map((entry) => entry.title)
                                             .join(", ")}
                                     </span>
                                 </span>
@@ -503,7 +501,7 @@ export class MobileTopicsMenu extends React.Component<{
                             {activeCategory === category && (
                                 <div className="subcategory-menu">
                                     <ul>
-                                        {allEntries(category).map(entry =>
+                                        {allEntries(category).map((entry) =>
                                             renderEntry(entry)
                                         )}
                                     </ul>
@@ -565,8 +563,8 @@ export class SiteHeaderMenus extends React.Component {
                 method: "GET",
                 credentials: "same-origin",
                 headers: {
-                    Accept: "application/json"
-                }
+                    Accept: "application/json",
+                },
             })
         ).json()
 

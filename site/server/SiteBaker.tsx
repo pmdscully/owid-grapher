@@ -2,7 +2,7 @@ import * as fs from "fs-extra"
 import * as path from "path"
 import * as glob from "glob"
 import { without } from "lodash"
-import * as _ from "lodash"
+import * as lodash from "lodash"
 import * as cheerio from "cheerio"
 import * as wpdb from "db/wpdb"
 import * as db from "db/db"
@@ -25,40 +25,39 @@ import {
     makeAtomFeed,
     feedbackPage,
     renderNotFoundPage,
-    renderExplorableIndicatorsJson,
-    renderCovidDataExplorerPage,
     renderCountryProfile,
-    flushCache as siteBakingFlushCache
-} from "./siteBaking"
+    flushCache as siteBakingFlushCache,
+} from "./siteRenderers"
 import {
     bakeGrapherUrls,
     getGrapherExportsByUrl,
-    GrapherExports
+    GrapherExports,
 } from "./grapherUtil"
 import { makeSitemap } from "./sitemap"
 
 import * as React from "react"
 import { embedSnippet } from "./embedCharts"
-import { ChartConfigProps } from "charts/ChartConfig"
+import { GrapherInterface } from "grapher/core/GrapherInterface"
 import { getVariableData } from "db/model/Variable"
 import { bakeImageExports } from "./svgPngExport"
 import { Post } from "db/model/Post"
 import { bakeCountries } from "./countryProfiles"
-import { chartPageFromConfig } from "./chartBaking"
-import { countries } from "utils/countries"
+import { grapherPageFromConfig } from "./grapherBaking"
+import { countries, getCountryDetectionRedirects } from "utils/countries"
 import { exec } from "utils/server/serverUtil"
 import { log } from "utils/server/log"
 import {
     covidDashboardSlug,
-    covidChartAndVariableMetaFilename
-} from "charts/covidDataExplorer/CovidConstants"
-import { covidCountryProfileRootPath } from "./covid/CovidConstants"
-import { bakeCovidChartAndVariableMeta } from "./bakeCovidChartAndVariableMeta"
-import { chartExplorerRedirects } from "./bakeCovidExplorerRedirects"
+    covidChartAndVariableMetaFilename,
+} from "explorer/covidExplorer/CovidConstants"
+import { bakeCovidChartAndVariableMeta } from "explorer/covidExplorer/bakeCovidChartAndVariableMeta"
+import { chartExplorerRedirects } from "explorer/covidExplorer/bakeCovidExplorerRedirects"
+import { countryProfileSpecs } from "site/server/countryProfileProjects"
 import {
-    countryProfileSpecs,
-    co2CountryProfileRootPath
-} from "site/client/CountryProfileConstants"
+    bakeAllPublishedExplorers,
+    renderCovidExplorerPage,
+} from "explorer/admin/ExplorerBaker"
+import { renderExplorableIndicatorsJson } from "explorer/indicatorExplorer/IndicatorBaking"
 
 // Static site generator using Wordpress
 
@@ -71,17 +70,6 @@ export class SiteBaker {
     grapherExports!: GrapherExports
     constructor(props: SiteBakerProps) {
         this.props = props
-    }
-
-    static getCountryDetectionRedirects() {
-        return countries
-            .filter(country => country.iso3166 && country.code)
-            .map(
-                country =>
-                    `/detect-country-redirect /detect-country.js?${
-                        country.code
-                    } 302! Country=${country.iso3166!.toLowerCase()}`
-            )
     }
 
     async bakeRedirects() {
@@ -121,10 +109,10 @@ export class SiteBaker {
             "/grapher/public/* /grapher/:splat 301",
             "/grapher/view/* /grapher/:splat 301",
 
-            "/slides/* https://slides.ourworldindata.org/:splat 301"
+            "/slides/* https://slides.ourworldindata.org/:splat 301",
         ]
 
-        SiteBaker.getCountryDetectionRedirects().forEach(redirect =>
+        getCountryDetectionRedirects().forEach((redirect) =>
             redirects.push(redirect)
         )
 
@@ -134,7 +122,7 @@ export class SiteBaker {
         )
         redirects.push(
             ...rows.map(
-                row =>
+                (row) =>
                     `${row.url.replace(/__/g, "/")} ${row.action_data.replace(
                         /__/g,
                         "/"
@@ -182,13 +170,13 @@ export class SiteBaker {
             grapherUrls.push(
                 ...$("iframe")
                     .toArray()
-                    .filter(el =>
+                    .filter((el) =>
                         (el.attribs["src"] || "").match(/\/grapher\//)
                     )
-                    .map(el => el.attribs["src"].trim())
+                    .map((el) => el.attribs["src"].trim())
             )
         }
-        grapherUrls = _.uniq(grapherUrls)
+        grapherUrls = lodash.uniq(grapherUrls)
 
         await bakeGrapherUrls(grapherUrls)
 
@@ -196,7 +184,7 @@ export class SiteBaker {
     }
 
     async bakeCountryProfiles() {
-        countryProfileSpecs.forEach(async spec => {
+        countryProfileSpecs.forEach(async (spec) => {
             // Delete all country profiles before regenerating them
             await fs.remove(`${BAKED_SITE_DIR}/${spec.rootPath}`)
 
@@ -207,12 +195,19 @@ export class SiteBaker {
                     spec,
                     country,
                     this.grapherExports
+                ).catch(() =>
+                    console.error(
+                        `${country.name} country profile not baked for project "${spec.project}". Check that both pages "${spec.landingPageSlug}" and "${spec.genericProfileSlug}" exist and are published.`
+                    )
                 )
-                const outPath = path.join(
-                    BAKED_SITE_DIR,
-                    `${spec.rootPath}/${country.slug}.html`
-                )
-                await this.stageWrite(outPath, html)
+
+                if (html) {
+                    const outPath = path.join(
+                        BAKED_SITE_DIR,
+                        `${spec.rootPath}/${country.slug}.html`
+                    )
+                    await this.stageWrite(outPath, html)
+                }
             }
         })
     }
@@ -239,6 +234,43 @@ export class SiteBaker {
         await this.stageWrite(outPath, html)
     }
 
+    // Returns the slugs of posts which exist on the filesystem but are not in the DB anymore.
+    // This happens when posts have been saved in previous bakes but have been since then deleted, unpublished or renamed.
+    // Among all existing slugs on the filesystem, some are not coming from WP. They are baked independently and should not
+    // be deleted if WP does not list them (e.g. grapher/*).
+    private getPostSlugsToRemove(postSlugsFromDb: string[]) {
+        const existingSlugs = glob
+            .sync(`${BAKED_SITE_DIR}/**/*.html`)
+            .map((path) =>
+                path.replace(`${BAKED_SITE_DIR}/`, "").replace(".html", "")
+            )
+            .filter(
+                (path) =>
+                    !path.startsWith("uploads") &&
+                    !path.startsWith("grapher") &&
+                    !path.startsWith("countries") &&
+                    !path.startsWith("country") &&
+                    !path.startsWith("subscribe") &&
+                    !path.startsWith("blog") &&
+                    !path.startsWith("entries-by-year") &&
+                    !path.startsWith("explore") &&
+                    !path.startsWith(covidDashboardSlug) &&
+                    !countryProfileSpecs.some((spec) =>
+                        path.startsWith(spec.rootPath)
+                    ) &&
+                    path !== "donate" &&
+                    path !== "feedback" &&
+                    path !== "charts" &&
+                    path !== "search" &&
+                    path !== "index" &&
+                    path !== "identifyadmin" &&
+                    path !== "404" &&
+                    path !== "google8272294305985984"
+            )
+
+        return without(existingSlugs, ...postSlugsFromDb)
+    }
+
     // Bake all Wordpress posts, both blog posts and entry pages
     async bakePosts() {
         const postsApi = await wpdb.getPosts()
@@ -255,35 +287,7 @@ export class SiteBaker {
         // await Promise.all(bakingPosts.map(post => this.bakePost(post)))
 
         // Delete any previously rendered posts that aren't in the database
-        const existingSlugs = glob
-            .sync(`${BAKED_SITE_DIR}/**/*.html`)
-            .map(path =>
-                path.replace(`${BAKED_SITE_DIR}/`, "").replace(".html", "")
-            )
-            .filter(
-                path =>
-                    !path.startsWith("uploads") &&
-                    !path.startsWith("grapher") &&
-                    !path.startsWith("countries") &&
-                    !path.startsWith("country") &&
-                    !path.startsWith("subscribe") &&
-                    !path.startsWith("blog") &&
-                    !path.startsWith("entries-by-year") &&
-                    !path.startsWith("explore") &&
-                    !path.startsWith(covidDashboardSlug) &&
-                    !path.startsWith(covidCountryProfileRootPath) &&
-                    !path.startsWith(co2CountryProfileRootPath) &&
-                    path !== "donate" &&
-                    path !== "feedback" &&
-                    path !== "charts" &&
-                    path !== "search" &&
-                    path !== "index" &&
-                    path !== "identifyadmin" &&
-                    path !== "404" &&
-                    path !== "google8272294305985984"
-            )
-        const toRemove = without(existingSlugs, ...postSlugs)
-        for (const slug of toRemove) {
+        for (const slug of this.getPostSlugsToRemove(postSlugs)) {
             const outPath = `${BAKED_SITE_DIR}/${slug}.html`
             await fs.unlink(outPath)
             this.stage(outPath, `DELETING ${outPath}`)
@@ -328,6 +332,7 @@ export class SiteBaker {
             `${BAKED_SITE_DIR}/sitemap.xml`,
             await makeSitemap()
         )
+
         if (settings.EXPLORER) {
             await this.stageWrite(
                 `${BAKED_SITE_DIR}/explore.html`,
@@ -341,13 +346,15 @@ export class SiteBaker {
         if (settings.COVID_DASHBOARD) {
             await this.stageWrite(
                 `${BAKED_SITE_DIR}/${covidDashboardSlug}.html`,
-                await renderCovidDataExplorerPage()
+                await renderCovidExplorerPage()
             )
         }
         await this.stageWrite(
             `${BAKED_SITE_DIR}/${covidChartAndVariableMetaFilename}`,
             await bakeCovidChartAndVariableMeta()
         )
+
+        await bakeAllPublishedExplorers()
     }
 
     // Pages that are expected by google scholar for indexing
@@ -366,7 +373,7 @@ export class SiteBaker {
             .select(db.raw("distinct year(published_at) as year"))
             .orderBy("year", "DESC")) as { year: number }[]
 
-        const years = rows.map(r => r.year)
+        const years = rows.map((r) => r.year)
 
         for (const year of years) {
             await this.stageWrite(
@@ -426,14 +433,14 @@ export class SiteBaker {
         return vardata
     }
 
-    async bakeChartPage(chart: ChartConfigProps) {
-        const outPath = `${BAKED_SITE_DIR}/grapher/${chart.slug}.html`
-        await fs.writeFile(outPath, await chartPageFromConfig(chart))
+    async bakeGrapherPage(grapher: GrapherInterface) {
+        const outPath = `${BAKED_SITE_DIR}/grapher/${grapher.slug}.html`
+        await fs.writeFile(outPath, await grapherPageFromConfig(grapher))
         this.stage(outPath)
     }
 
-    async bakeChart(chart: ChartConfigProps) {
-        const htmlPath = `${BAKED_SITE_DIR}/grapher/${chart.slug}.html`
+    async bakeGrapher(grapher: GrapherInterface) {
+        const htmlPath = `${BAKED_SITE_DIR}/grapher/${grapher.slug}.html`
         let isSameVersion = false
         try {
             // If the chart is the same version, we can potentially skip baking the data and exports (which is by far the slowest part)
@@ -441,16 +448,18 @@ export class SiteBaker {
             const match = html.match(/jsonConfig\s*=\s*(\{.+\})/)
             if (match) {
                 const fileVersion = JSON.parse(match[1]).version
-                isSameVersion = chart.version === fileVersion
+                isSameVersion = grapher.version === fileVersion
             }
         } catch (err) {
             if (err.code !== "ENOENT") console.error(err)
         }
 
         // Always bake the html for every chart; it's cheap to do so
-        await this.bakeChartPage(chart)
+        await this.bakeGrapherPage(grapher)
 
-        const variableIds = _.uniq(chart.dimensions.map(d => d.variableId))
+        const variableIds = lodash.uniq(
+            grapher.dimensions?.map((d) => d.variableId)
+        )
         if (!variableIds.length) return
 
         // Make sure we bake the variables successfully before outputing the chart html
@@ -463,8 +472,8 @@ export class SiteBaker {
 
         try {
             await fs.mkdirp(`${BAKED_SITE_DIR}/grapher/exports/`)
-            const svgPath = `${BAKED_SITE_DIR}/grapher/exports/${chart.slug}.svg`
-            const pngPath = `${BAKED_SITE_DIR}/grapher/exports/${chart.slug}.png`
+            const svgPath = `${BAKED_SITE_DIR}/grapher/exports/${grapher.slug}.svg`
+            const pngPath = `${BAKED_SITE_DIR}/grapher/exports/${grapher.slug}.png`
             if (
                 !isSameVersion ||
                 !fs.existsSync(svgPath) ||
@@ -475,7 +484,7 @@ export class SiteBaker {
                 )
                 await bakeImageExports(
                     `${BAKED_SITE_DIR}/grapher/exports`,
-                    chart,
+                    grapher,
                     vardata,
                     OPTIMIZE_SVG_EXPORTS
                 )
@@ -487,7 +496,7 @@ export class SiteBaker {
         }
     }
 
-    async bakeCharts(
+    async bakeGraphers(
         opts: {
             regenConfig?: boolean
             regenData?: boolean
@@ -501,11 +510,11 @@ export class SiteBaker {
         const newSlugs = []
         let requests = []
         for (const row of rows) {
-            const chart: ChartConfigProps = JSON.parse(row.config)
-            chart.id = row.id
-            newSlugs.push(chart.slug)
+            const grapher: GrapherInterface = JSON.parse(row.config)
+            grapher.id = row.id
+            newSlugs.push(grapher.slug)
 
-            requests.push(this.bakeChart(chart))
+            requests.push(this.bakeGrapher(grapher))
             // Execute in batches
             if (requests.length > 50) {
                 await Promise.all(requests)
@@ -516,7 +525,7 @@ export class SiteBaker {
         // Delete any that are missing from the database
         const oldSlugs = glob
             .sync(`${BAKED_SITE_DIR}/grapher/*.html`)
-            .map(slug =>
+            .map((slug) =>
                 slug
                     .replace(`${BAKED_SITE_DIR}/grapher/`, "")
                     .replace(".html", "")
@@ -527,10 +536,10 @@ export class SiteBaker {
             try {
                 const paths = [
                     `${BAKED_SITE_DIR}/grapher/${slug}.html`,
-                    `${BAKED_SITE_DIR}/grapher/exports/${slug}.png`
+                    `${BAKED_SITE_DIR}/grapher/exports/${slug}.png`,
                 ] //, `${BAKED_SITE_DIR}/grapher/exports/${slug}.svg`]
-                await Promise.all(paths.map(p => fs.unlink(p)))
-                paths.map(p => this.stage(p))
+                await Promise.all(paths.map((p) => fs.unlink(p)))
+                paths.map((p) => this.stage(p))
             } catch (err) {
                 console.error(err)
             }
@@ -542,9 +551,9 @@ export class SiteBaker {
     async bakeExplorerRedirects() {
         for (const chartExplorerRedirect of chartExplorerRedirects) {
             const { slugs, explorerQueryStr } = chartExplorerRedirect
-            const html = await renderCovidDataExplorerPage({ explorerQueryStr })
+            const html = await renderCovidExplorerPage({ explorerQueryStr })
             await Promise.all(
-                slugs.map(slug =>
+                slugs.map((slug) =>
                     this.stageWrite(
                         `${BAKED_SITE_DIR}/grapher/${slug}.html`,
                         html
@@ -567,7 +576,7 @@ export class SiteBaker {
         await this.bakeGoogleScholar()
         await this.bakeCountryProfiles()
         await this.bakePosts()
-        await this.bakeCharts()
+        await this.bakeGraphers()
         await this.bakeExplorerRedirects()
         // Clear caches to allow garbage collection while waiting for next run
         this.flushCache()

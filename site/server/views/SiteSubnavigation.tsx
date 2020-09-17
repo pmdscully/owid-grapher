@@ -1,7 +1,6 @@
 import * as React from "react"
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome"
 import { faChevronLeft } from "@fortawesome/free-solid-svg-icons/faChevronLeft"
-import { co2CountryProfilePath } from "site/client/CountryProfileConstants"
 
 interface SubnavItem {
     label: string
@@ -10,7 +9,10 @@ interface SubnavItem {
     highlight?: boolean
 }
 
-const subnavs: { [subnavId: string]: SubnavItem[] } = {
+const SubNavIds = ["about", "coronavirus", "co2", "energy"] as const
+export type SubNavId = typeof SubNavIds[number]
+
+const subnavs: { [key in SubNavId]: SubnavItem[] } = {
     about: [
         // `label` is shown in the UI, `id` is specified as a formatting option
         // on a page (the top html comment in WordPress)
@@ -22,17 +24,17 @@ const subnavs: { [subnavId: string]: SubnavItem[] } = {
         {
             label: "History",
             href: "/history-of-our-world-in-data",
-            id: "history"
+            id: "history",
         },
         { label: "Supporters", href: "/supporters", id: "supporters" },
         { label: "FAQs", href: "/faqs", id: "faqs" },
         {
             label: "How-Tos",
             href: "/how-to-use-our-world-in-data",
-            id: "how-tos"
+            id: "how-tos",
         },
         { label: "Grapher", href: "/owid-grapher", id: "grapher" },
-        { label: "Contact", href: "/about#contact", id: "contact" }
+        { label: "Contact", href: "/about#contact", id: "contact" },
     ],
     coronavirus: [
         { label: "Coronavirus", href: "/coronavirus", id: "coronavirus" },
@@ -40,13 +42,13 @@ const subnavs: { [subnavId: string]: SubnavItem[] } = {
             label: "By country",
             href: "/coronavirus#coronavirus-country-profiles",
             id: "by-country",
-            highlight: true
+            highlight: true,
         },
         {
             label: "Data explorer",
             href: "/coronavirus-data-explorer",
             id: "data-explorer",
-            highlight: true
+            highlight: true,
         },
         { label: "Deaths", href: "/covid-deaths", id: "deaths" },
         { label: "Cases", href: "/covid-cases", id: "cases" },
@@ -54,98 +56,103 @@ const subnavs: { [subnavId: string]: SubnavItem[] } = {
         {
             label: "Mortality risk",
             href: "/mortality-risk-covid",
-            id: "mortality-risk"
+            id: "mortality-risk",
+        },
+        {
+            label: "Excess mortality",
+            href: "/excess-mortality-covid",
+            id: "excess-mortality",
         },
         {
             label: "Policy responses",
             href: "/policy-responses-covid",
-            id: "policy-responses"
+            id: "policy-responses",
         },
         {
             label: "Exemplars",
             href: "/identify-covid-exemplars",
-            id: "exemplars"
+            id: "exemplars",
         },
-        { label: "All charts", href: "/coronavirus-data", id: "data" }
+        { label: "All charts", href: "/coronavirus-data", id: "data" },
     ],
     co2: [
         {
             label: "CO₂ and GHG Emissions",
             href: "/co2-and-other-greenhouse-gas-emissions",
-            id: "co2-and-ghg-emissions"
+            id: "co2-and-ghg-emissions",
         },
         {
             label: "By country",
             href:
                 "/co2-and-other-greenhouse-gas-emissions#co2-and-greenhouse-gas-emissions-country-profiles",
             id: "by-country",
-            highlight: true
+            highlight: true,
         },
         {
             label: "Data explorer",
-            href: "/co2-data-explorer",
-            id: "co2-data-explorer"
+            href: "/explorers/co2",
+            id: "co2-data-explorer",
         },
         { label: "CO₂ emissions", href: "/co2-emissions", id: "co2-emissions" },
         { label: "CO₂ by fuel", href: "/emissions-by-fuel", id: "by-fuel" },
         {
             label: "GHG emissions",
             href: "/greenhouse-gas-emissions",
-            id: "ghg-emissions"
+            id: "ghg-emissions",
         },
         { label: "By sector", href: "/emissions-by-sector", id: "by-sector" },
         {
             label: "Emissions drivers",
             href: "/emissions-drivers",
-            id: "emissions-drivers"
+            id: "emissions-drivers",
         },
         {
             label: "Atmospheric concentrations",
             href: "/atmospheric-concentrations",
-            id: "atm-concentrations"
-        }
+            id: "atm-concentrations",
+        },
     ],
     energy: [
         {
             label: "Energy",
             href: "/energy",
-            id: "energy"
+            id: "energy",
         },
         {
             label: "By country",
             href: "/energy#energy-country-profiles",
             id: "by-country",
-            highlight: true
+            highlight: true,
         },
         {
             label: "Data explorer",
-            href: "/energy-data-explorer",
-            id: "energy-data-explorer"
+            href: "/explorers/energy",
+            id: "energy-data-explorer",
         },
         { label: "Energy access", href: "/energy-access", id: "energy-access" },
         {
             label: "Production & Consumption",
             href: "/energy-production-consumption",
-            id: "production-consumption"
+            id: "production-consumption",
         },
         { label: "Energy mix", href: "/energy-mix", id: "energy-mix" },
         {
             label: "Electricity mix",
             href: "/electricity-mix",
-            id: "electricity-mix"
+            id: "electricity-mix",
         },
         { label: "Fossil fuels", href: "/fossil-fuels", id: "fossil-fuels" },
         {
             label: "Renewables",
             href: "/renewable-energy",
-            id: "renewable-energy"
+            id: "renewable-energy",
         },
-        { label: "Nuclear", href: "/nuclear-energy", id: "nuclear-energy" }
-    ]
+        { label: "Nuclear", href: "/nuclear-energy", id: "nuclear-energy" },
+    ],
 }
 
 export class SiteSubnavigation extends React.Component<{
-    subnavId: string
+    subnavId: SubNavId
     subnavCurrentId?: string
 }> {
     render() {
@@ -162,7 +169,7 @@ export class SiteSubnavigation extends React.Component<{
                                     const dataTrackNote = [
                                         subnavId,
                                         "subnav",
-                                        id
+                                        id,
                                     ].join("-")
                                     if (id === subnavCurrentId)
                                         classes.push("current")

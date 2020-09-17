@@ -2,16 +2,16 @@ import {
     SiteSearchResults,
     ChartHit,
     CountryHit,
-    ArticleHit
-} from "site/siteSearch"
+    ArticleHit,
+} from "algolia/searchClient"
 import { observer } from "mobx-react"
 import { computed } from "mobx"
 import React from "react"
 import { EmbedChart } from "./EmbedChart"
 import { BAKED_GRAPHER_URL } from "settings"
-import { uniq, capitalize } from "charts/Util"
+import { uniq, capitalize } from "grapher/utils/Util"
 import { Country } from "utils/countries"
-import { EntityUrlBuilder } from "charts/ChartUrl"
+import { EntityUrlBuilder } from "grapher/core/EntityUrlBuilder"
 
 class ChartResult extends React.Component<{
     hit: ChartHit
@@ -51,18 +51,14 @@ class ChartResult extends React.Component<{
                 <a href={`${BAKED_GRAPHER_URL}/${slug}`}>{title}</a>
                 {hit.variantName ? (
                     <span className="variantName"> {hit.variantName}</span>
-                ) : (
-                    undefined
-                )}
+                ) : undefined}
                 {hit._snippetResult ? (
                     <p
                         dangerouslySetInnerHTML={{
-                            __html: hit._snippetResult.subtitle.value
+                            __html: hit._snippetResult.subtitle.value,
                         }}
                     />
-                ) : (
-                    undefined
-                )}
+                ) : undefined}
             </li>
         )
     }
@@ -78,7 +74,7 @@ class CountryResult extends React.Component<{ hit: CountryHit }> {
                 <span className="variantName">Country</span>
                 <p
                     dangerouslySetInnerHTML={{
-                        __html: hit._snippetResult.content.value
+                        __html: hit._snippetResult.content.value,
                     }}
                 />
             </li>
@@ -98,12 +94,10 @@ class ArticleResult extends React.Component<{ hit: ArticleHit }> {
                 <a href={`/${hit.slug}`}>{hit.title}</a>{" "}
                 {showType ? (
                     <span className="variantName">{capitalize(hit.type)}</span>
-                ) : (
-                    undefined
-                )}
+                ) : undefined}
                 <p
                     dangerouslySetInnerHTML={{
-                        __html: hit._snippetResult.content.value
+                        __html: hit._snippetResult.content.value,
                     }}
                 />
             </li>
@@ -120,7 +114,7 @@ function pickEntitiesForChart(hit: ChartHit, queryCountries: Country[]) {
         const entity = res.value.replace(/<\/?em>/g, "")
         if (
             res.matchLevel !== "none" ||
-            queryCountries.some(c => c.name === entity)
+            queryCountries.some((c) => c.name === entity)
         ) {
             entities.push(entity)
         }
@@ -140,11 +134,11 @@ export class SearchResults extends React.Component<{
     }
 
     @computed get entries() {
-        return this.props.results.pages.filter(p => p.type === "page")
+        return this.props.results.pages.filter((p) => p.type === "page")
     }
 
     @computed get blogposts() {
-        return this.props.results.pages.filter(p => p.type === "post")
+        return this.props.results.pages.filter((p) => p.type === "post")
     }
 
     @computed get bestChartEntities() {
@@ -178,11 +172,9 @@ export class SearchResults extends React.Component<{
                         <h2>Pages</h2>
                         {!results.pages.length ? (
                             <p>No matching pages.</p>
-                        ) : (
-                            undefined
-                        )}
+                        ) : undefined}
                         <ul>
-                            {results.pages.map(hit =>
+                            {results.pages.map((hit) =>
                                 hit.type === "country" ? (
                                     <CountryResult
                                         key={hit.objectID}
@@ -201,16 +193,14 @@ export class SearchResults extends React.Component<{
                         <h2>Charts</h2>
                         {!results.charts.length ? (
                             <p>No matching charts.</p>
-                        ) : (
-                            undefined
-                        )}
+                        ) : undefined}
                         {this.bestChartSlug && (
                             <EmbedChart
                                 src={`${BAKED_GRAPHER_URL}/${this.bestChartSlug}`}
                             />
                         )}
                         <ul>
-                            {results.charts.map(hit => (
+                            {results.charts.map((hit) => (
                                 <ChartResult
                                     key={hit.chartId}
                                     hit={hit}

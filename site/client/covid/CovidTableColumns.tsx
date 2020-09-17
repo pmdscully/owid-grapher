@@ -8,24 +8,24 @@ import { faInfoCircle } from "@fortawesome/free-solid-svg-icons/faInfoCircle"
 import { faExclamationCircle } from "@fortawesome/free-solid-svg-icons/faExclamationCircle"
 import { faCheckCircle } from "@fortawesome/free-regular-svg-icons/faCheckCircle"
 
-import { Tippy } from "charts/Tippy"
+import { Tippy } from "grapher/chart/Tippy"
 
 import {
     CovidTableHeaderCell as HeaderCell,
-    CovidTableHeaderCellProps
+    CovidTableHeaderCellProps,
 } from "./CovidTableHeaderCell"
 import {
     CovidSortKey,
     CovidCountryDatum,
     CovidDatum,
     NounGenerator,
-    CovidDoublingRange
+    CovidDoublingRange,
 } from "./CovidTypes"
 import { formatDate, formatInt } from "./CovidUtils"
 import { nouns } from "./CovidConstants"
 import { CovidDoublingTooltip } from "./CovidDoublingTooltip"
-import { CovidTimeSeriesValue } from "./CovidTimeSeriesValue"
-import { SparkBars, SparkBarsProps } from "charts/SparkBars"
+import { SparkBarTimeSeriesValue } from "grapher/sparkBars/SparkBarTimeSeriesValue"
+import { SparkBars, SparkBarsProps } from "grapher/sparkBars/SparkBars"
 
 export enum CovidTableColumnKey {
     location = "location",
@@ -38,7 +38,7 @@ export enum CovidTableColumnKey {
     daysToDoubleDeaths = "daysToDoubleDeaths",
     totalTests = "totalTests",
     testDate = "testDate",
-    testSource = "testSource"
+    testSource = "testSource",
 }
 
 export type CovidTableHeaderSpec = Omit<
@@ -116,7 +116,7 @@ const daysToDoubleGenerator = (
                                     backgroundColor: doubingBackgColorScale(
                                         range.length
                                     ),
-                                    color: doubingTextColorScale(range.length)
+                                    color: doubingTextColorScale(range.length),
                                 }}
                             >
                                 {range.length}
@@ -183,25 +183,23 @@ const totalGenerator = (accessor: IntAccessor, noun: NounGenerator) => (
                         className="spark-bars covid-bars"
                         {...bars}
                         y={accessor}
-                        renderValue={d =>
+                        renderValue={(d) =>
                             d && accessor(d) !== undefined ? (
-                                <CovidTimeSeriesValue
+                                <SparkBarTimeSeriesValue
                                     className="highlighted"
                                     value={formatInt(accessor(d))}
-                                    date={d.date}
+                                    formattedDate={formatDate(d.date)}
                                 />
-                            ) : (
-                                undefined
-                            )
+                            ) : undefined
                         }
                     />
                 </div>
                 <div className="value">
                     {datum.latest && accessor(datum.latest) !== undefined && (
-                        <CovidTimeSeriesValue
+                        <SparkBarTimeSeriesValue
                             className="current"
                             value={`${formatInt(accessor(datum.latest))} total`}
-                            date={datum.latest.date}
+                            formattedDate={formatDate(datum.latest.date)}
                             latest={true}
                         />
                     )}
@@ -226,29 +224,27 @@ const newGenerator = (accessor: IntAccessor, noun: NounGenerator) => (
                         className="spark-bars covid-bars"
                         {...bars}
                         y={accessor}
-                        renderValue={d =>
+                        renderValue={(d) =>
                             d && accessor(d) !== undefined ? (
-                                <CovidTimeSeriesValue
+                                <SparkBarTimeSeriesValue
                                     className="highlighted"
                                     value={formatInt(accessor(d), "", {
-                                        showPlus: true
+                                        showPlus: true,
                                     })}
-                                    date={d && d.date}
+                                    formattedDate={d && formatDate(d.date)}
                                 />
-                            ) : (
-                                undefined
-                            )
+                            ) : undefined
                         }
                     />
                 </div>
                 <div className="value">
                     {datum.latest && accessor(datum.latest) !== undefined && (
-                        <CovidTimeSeriesValue
+                        <SparkBarTimeSeriesValue
                             className="current"
                             value={`${formatInt(accessor(datum.latest), "", {
-                                showPlus: true
+                                showPlus: true,
                             })} new`}
-                            date={datum.latest.date}
+                            formattedDate={formatDate(datum.latest.date)}
                             latest={true}
                         />
                     )}
@@ -265,7 +261,7 @@ const newGenerator = (accessor: IntAccessor, noun: NounGenerator) => (
 export const columns: Record<CovidTableColumnKey, CovidTableColumnSpec> = {
     location: {
         sortKey: CovidSortKey.location,
-        header: props => (
+        header: (props) => (
             <HeaderCell
                 {...props}
                 className="location"
@@ -274,15 +270,15 @@ export const columns: Record<CovidTableColumnKey, CovidTableColumnSpec> = {
                 <strong>Location</strong>
             </HeaderCell>
         ),
-        cell: props => (
+        cell: (props) => (
             <td className="location" rowSpan={props.baseRowSpan}>
                 {props.datum.location}
             </td>
-        )
+        ),
     },
     locationTests: {
         sortKey: CovidSortKey.location,
-        header: props => (
+        header: (props) => (
             <HeaderCell
                 {...props}
                 className="location-tests"
@@ -291,15 +287,15 @@ export const columns: Record<CovidTableColumnKey, CovidTableColumnSpec> = {
                 <strong>Location</strong>
             </HeaderCell>
         ),
-        cell: props => (
+        cell: (props) => (
             <td className="location-tests" rowSpan={props.baseRowSpan}>
                 {props.datum.location}
             </td>
-        )
+        ),
     },
     daysToDoubleCases: {
         sortKey: CovidSortKey.daysToDoubleCases,
-        header: props => (
+        header: (props) => (
             <HeaderCell
                 {...props}
                 className={`measure--${nouns.cases()}`}
@@ -315,16 +311,16 @@ export const columns: Record<CovidTableColumnKey, CovidTableColumnSpec> = {
             </HeaderCell>
         ),
         cell: daysToDoubleGenerator(
-            d => d.totalCases,
-            d => d.caseDoublingRange,
+            (d) => d.totalCases,
+            (d) => d.caseDoublingRange,
             nouns.cases,
             casesDoubingBackgColorScale,
             casesDoubingTextColorScale
-        )
+        ),
     },
     daysToDoubleDeaths: {
         sortKey: CovidSortKey.daysToDoubleDeaths,
-        header: props => (
+        header: (props) => (
             <HeaderCell
                 {...props}
                 className={`measure--${nouns.deaths()}`}
@@ -340,16 +336,16 @@ export const columns: Record<CovidTableColumnKey, CovidTableColumnSpec> = {
             </HeaderCell>
         ),
         cell: daysToDoubleGenerator(
-            d => d.totalDeaths,
-            d => d.deathDoublingRange,
+            (d) => d.totalDeaths,
+            (d) => d.deathDoublingRange,
             nouns.deaths,
             deathsDoubingBackgColorScale,
             deathsDoubingTextColorScale
-        )
+        ),
     },
     totalCases: {
         sortKey: CovidSortKey.totalCases,
-        header: props => (
+        header: (props) => (
             <HeaderCell
                 {...props}
                 className={`measure--${nouns.cases()}`}
@@ -366,17 +362,15 @@ export const columns: Record<CovidTableColumnKey, CovidTableColumnSpec> = {
                             Up to date for 10&nbsp;AM (CET) on{" "}
                             {formatDate(props.lastUpdated)}.
                         </>
-                    ) : (
-                        undefined
-                    )}
+                    ) : undefined}
                 </span>
             </HeaderCell>
         ),
-        cell: totalGenerator(d => d.totalCases, nouns.cases)
+        cell: totalGenerator((d) => d.totalCases, nouns.cases),
     },
     totalDeaths: {
         sortKey: CovidSortKey.totalDeaths,
-        header: props => (
+        header: (props) => (
             <HeaderCell
                 {...props}
                 className={`measure--${nouns.deaths()}`}
@@ -393,17 +387,15 @@ export const columns: Record<CovidTableColumnKey, CovidTableColumnSpec> = {
                             Up to date for 10&nbsp;AM (CET) on{" "}
                             {formatDate(props.lastUpdated)}.
                         </>
-                    ) : (
-                        undefined
-                    )}
+                    ) : undefined}
                 </span>
             </HeaderCell>
         ),
-        cell: totalGenerator(d => d.totalDeaths, nouns.deaths)
+        cell: totalGenerator((d) => d.totalDeaths, nouns.deaths),
     },
     newCases: {
         sortKey: CovidSortKey.newCases,
-        header: props => (
+        header: (props) => (
             <HeaderCell
                 {...props}
                 className={`measure--${nouns.cases()}`}
@@ -420,17 +412,15 @@ export const columns: Record<CovidTableColumnKey, CovidTableColumnSpec> = {
                             Up to date for 10&nbsp;AM (CET) on{" "}
                             {formatDate(props.lastUpdated)}.
                         </>
-                    ) : (
-                        undefined
-                    )}
+                    ) : undefined}
                 </span>
             </HeaderCell>
         ),
-        cell: newGenerator(d => d.newCases, nouns.cases)
+        cell: newGenerator((d) => d.newCases, nouns.cases),
     },
     newDeaths: {
         sortKey: CovidSortKey.newDeaths,
-        header: props => (
+        header: (props) => (
             <HeaderCell
                 {...props}
                 className={`measure--${nouns.deaths()}`}
@@ -447,17 +437,15 @@ export const columns: Record<CovidTableColumnKey, CovidTableColumnSpec> = {
                             Up to date for 10&nbsp;AM (CET) on{" "}
                             {formatDate(props.lastUpdated)}.
                         </>
-                    ) : (
-                        undefined
-                    )}
+                    ) : undefined}
                 </span>
             </HeaderCell>
         ),
-        cell: newGenerator(d => d.newDeaths, nouns.deaths)
+        cell: newGenerator((d) => d.newDeaths, nouns.deaths),
     },
     totalTests: {
         sortKey: CovidSortKey.totalTests,
-        header: props => (
+        header: (props) => (
             <HeaderCell
                 {...props}
                 className={`measure--${nouns.tests()}`}
@@ -469,7 +457,7 @@ export const columns: Record<CovidTableColumnKey, CovidTableColumnSpec> = {
                 </strong>
             </HeaderCell>
         ),
-        cell: props => (
+        cell: (props) => (
             <React.Fragment>
                 <td
                     className={`measure--${nouns.tests()} total-tests`}
@@ -491,19 +479,22 @@ export const columns: Record<CovidTableColumnKey, CovidTableColumnSpec> = {
                             style={{
                                 backgroundColor:
                                     props.countryColors[props.datum.location],
-                                width: `${props.totalTestsBarScale(
-                                    props.datum.latestWithTests.tests.totalTests
-                                ) * 100}%`
+                                width: `${
+                                    props.totalTestsBarScale(
+                                        props.datum.latestWithTests.tests
+                                            .totalTests
+                                    ) * 100
+                                }%`,
                             }}
                         />
                     )}
                 </td>
             </React.Fragment>
-        )
+        ),
     },
     testDate: {
         sortKey: CovidSortKey.testDate,
-        header: props => (
+        header: (props) => (
             <HeaderCell
                 {...props}
                 className={`measure--${nouns.tests()}`}
@@ -512,19 +503,19 @@ export const columns: Record<CovidTableColumnKey, CovidTableColumnSpec> = {
                 <strong>Date</strong>
             </HeaderCell>
         ),
-        cell: props => (
+        cell: (props) => (
             <td className="date" rowSpan={1}>
                 {formatDate(props.datum.latestWithTests?.date, "")}
             </td>
-        )
+        ),
     },
     testSource: {
-        header: props => (
+        header: (props) => (
             <HeaderCell {...props} className={`measure--${nouns.tests()}`}>
                 <strong>Source</strong>
             </HeaderCell>
         ),
-        cell: props => {
+        cell: (props) => {
             if (props.datum.latestWithTests?.tests === undefined)
                 return <td></td>
 
@@ -534,13 +525,13 @@ export const columns: Record<CovidTableColumnKey, CovidTableColumnSpec> = {
                 sourceLabel,
                 publicationDate,
                 remarks,
-                nonOfficial
+                nonOfficial,
             } = tests
             return (
                 <td className="testing-notes">
                     <span
                         className={classnames("official", {
-                            "is-official": !nonOfficial
+                            "is-official": !nonOfficial,
                         })}
                     >
                         <Tippy
@@ -569,6 +560,6 @@ export const columns: Record<CovidTableColumnKey, CovidTableColumnSpec> = {
                     </span>
                 </td>
             )
-        }
-    }
+        },
+    },
 }

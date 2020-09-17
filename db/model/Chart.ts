@@ -4,11 +4,11 @@ import {
     Column,
     BaseEntity,
     ManyToOne,
-    OneToMany
+    OneToMany,
 } from "typeorm"
-import * as _ from "lodash"
+import * as lodash from "lodash"
 import * as db from "db/db"
-import { ChartConfigProps } from "charts/ChartConfig"
+import { GrapherInterface } from "grapher/core/GrapherInterface"
 import { getVariableData } from "./Variable"
 import { User } from "./User"
 import { ChartRevision } from "./ChartRevision"
@@ -27,20 +27,11 @@ export class Chart extends BaseEntity {
     @Column() starred!: boolean
     @Column() isExplorable!: boolean
 
-    @ManyToOne(
-        () => User,
-        user => user.lastEditedCharts
-    )
+    @ManyToOne(() => User, (user) => user.lastEditedCharts)
     lastEditedByUser!: User
-    @ManyToOne(
-        () => User,
-        user => user.publishedCharts
-    )
+    @ManyToOne(() => User, (user) => user.publishedCharts)
     publishedByUser!: User
-    @OneToMany(
-        () => ChartRevision,
-        rev => rev.chart
-    )
+    @OneToMany(() => ChartRevision, (rev) => rev.chart)
     logs!: ChartRevision[]
 
     static table: string = "charts"
@@ -73,8 +64,8 @@ export class Chart extends BaseEntity {
     }
 
     static async setTags(chartId: number, tagIds: number[]) {
-        await db.transaction(async t => {
-            const tagRows = tagIds.map(tagId => [tagId, chartId])
+        await db.transaction(async (t) => {
+            const tagRows = tagIds.map((tagId) => [tagId, chartId])
             await t.execute(`DELETE FROM chart_tags WHERE chartId=?`, [chartId])
             if (tagRows.length)
                 await t.execute(
@@ -84,16 +75,16 @@ export class Chart extends BaseEntity {
 
             const tags = tagIds.length
                 ? ((await t.query("select parentId from tags where id in (?)", [
-                      tagIds
+                      tagIds,
                   ])) as { parentId: number }[])
                 : []
-            const isIndexable = tags.some(t =>
+            const isIndexable = tags.some((t) =>
                 PUBLIC_TAG_PARENT_IDS.includes(t.parentId)
             )
 
             await t.execute("update charts set is_indexable = ? where id = ?", [
                 isIndexable,
-                chartId
+                chartId,
             ])
         })
     }
@@ -109,7 +100,7 @@ export class Chart extends BaseEntity {
             chart.tags = []
         }
 
-        const chartsById = _.keyBy(charts, c => c.id)
+        const chartsById = lodash.keyBy(charts, (c) => c.id)
 
         for (const ct of chartTags) {
             const chart = chartsById[ct.chartId]
@@ -130,7 +121,7 @@ export class Chart extends BaseEntity {
 
 interface ChartRow {
     id: number
-    config: ChartConfigProps
+    config: GrapherInterface
 }
 
 // TODO integrate this old logic with typeorm
@@ -166,8 +157,8 @@ export class OldChart {
     }
 
     id: number
-    config: ChartConfigProps
-    constructor(id: number, config: ChartConfigProps) {
+    config: GrapherInterface
+    constructor(id: number, config: GrapherInterface) {
         this.id = id
         this.config = config
 
@@ -176,9 +167,25 @@ export class OldChart {
     }
 
     async getVariableData(): Promise<any> {
-        const variableIds = _.uniq(
-            this.config.dimensions.map(d => d.variableId)
+        const variableIds = lodash.uniq(
+            this.config.dimensions!.map((d) => d.variableId)
         )
         return getVariableData(variableIds)
+    }
+}
+
+export async function getChartById(
+    chartId: number
+): Promise<GrapherInterface | undefined> {
+    const chart = (
+        await db.query(`SELECT id, config FROM charts WHERE id=?`, [chartId])
+    )[0]
+
+    if (chart) {
+        const config = JSON.parse(chart.config)
+        config.id = chart.id
+        return config
+    } else {
+        return undefined
     }
 }

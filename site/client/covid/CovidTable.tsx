@@ -10,7 +10,6 @@ import { faAngleDoubleDown } from "@fortawesome/free-solid-svg-icons/faAngleDoub
 
 import {
     throttle,
-    entries,
     groupBy,
     sortBy,
     maxBy,
@@ -20,9 +19,9 @@ import {
     addDays,
     extend,
     fromPairs,
-    uniq
-} from "charts/Util"
-import { SortOrder } from "charts/SortOrder"
+    uniq,
+} from "grapher/utils/Util"
+import { SortOrder } from "grapher/core/GrapherConstants"
 
 import { DEFAULT_SORT_ORDER } from "./CovidConstants"
 
@@ -31,7 +30,7 @@ import {
     CovidSeries,
     CovidCountrySeries,
     DateRange,
-    CovidCountryDatum
+    CovidCountryDatum,
 } from "./CovidTypes"
 
 import { getDoublingRange, sortAccessors, inverseSortOrder } from "./CovidUtils"
@@ -41,7 +40,7 @@ import {
     CovidTableColumnKey,
     CovidTableHeaderSpec,
     columns,
-    CovidTableCellSpec
+    CovidTableCellSpec,
 } from "./CovidTableColumns"
 import { fetchECDCData } from "./CovidFetch"
 
@@ -73,9 +72,9 @@ export class CovidTable extends React.Component<CovidTableProps> {
     static defaultProps: CovidTableProps = {
         columns: [],
         mobileColumns: [],
-        filter: d => d,
+        filter: (d) => d,
         loadData: fetchECDCData,
-        defaultState: {}
+        defaultState: {},
     }
 
     @observable.ref data: CovidSeries | undefined =
@@ -122,29 +121,29 @@ export class CovidTable extends React.Component<CovidTableProps> {
 
     @computed get countrySeries(): CovidCountrySeries {
         if (this.data) {
-            return entries(groupBy(this.data, d => d.location)).map(
+            return Object.entries(groupBy(this.data, (d) => d.location)).map(
                 ([location, series]) => {
                     const sortedSeries: CovidSeries = sortBy(
                         series,
-                        d => d.date
+                        (d) => d.date
                     )
                     return {
                         id: location,
                         location: location,
                         series: sortedSeries,
-                        latest: maxBy(series, d => d.date),
+                        latest: maxBy(series, (d) => d.date),
                         latestWithTests: maxBy(
-                            series.filter(d => d.tests),
-                            d => d.date
+                            series.filter((d) => d.tests),
+                            (d) => d.date
                         ),
                         caseDoublingRange: getDoublingRange(
                             sortedSeries,
-                            d => d.totalCases
+                            (d) => d.totalCases
                         ),
                         deathDoublingRange: getDoublingRange(
                             sortedSeries,
-                            d => d.totalDeaths
-                        )
+                            (d) => d.totalDeaths
+                        ),
                     }
                 }
             )
@@ -157,7 +156,7 @@ export class CovidTable extends React.Component<CovidTableProps> {
         const accessor = sortAccessors[sortKey]
         const sortedSeries = orderBy(
             this.countrySeries,
-            d => {
+            (d) => {
                 const value = accessor(d)
                 // In order for undefined values to always be last, we map them to +- Infinity
                 return value !== undefined
@@ -177,14 +176,14 @@ export class CovidTable extends React.Component<CovidTableProps> {
         if (truncate) {
             ;[shown, truncated] = [
                 rest.slice(0, truncateLength),
-                rest.slice(truncateLength)
+                rest.slice(truncateLength),
             ]
         }
 
         return {
             shown,
             truncated,
-            hidden
+            hidden,
         }
     }
 
@@ -195,7 +194,7 @@ export class CovidTable extends React.Component<CovidTableProps> {
     @computed get dateRange(): DateRange {
         const difference = this.tableState.isMobile ? 13 : 20 // inclusive, so 21 days technically
         if (this.data !== undefined && this.data.length > 0) {
-            const maxDate = max(this.data.map(d => d.date)) as Date
+            const maxDate = max(this.data.map((d) => d.date)) as Date
             const minDate = addDays(maxDate, -difference)
             return [minDate, maxDate]
         }
@@ -207,7 +206,7 @@ export class CovidTable extends React.Component<CovidTableProps> {
     }
 
     @computed get totalTestsBarScale() {
-        const maxTests = max(this.data?.map(d => d.tests?.totalTests))
+        const maxTests = max(this.data?.map((d) => d.tests?.totalTests))
         return scaleLinear()
             .domain([0, maxTests ?? 1])
             .range([0, 1])
@@ -235,12 +234,12 @@ export class CovidTable extends React.Component<CovidTableProps> {
             currentSortOrder: sortOrder,
             isMobile: isMobile,
             lastUpdated: this.lastUpdated,
-            onSort: this.onSort
+            onSort: this.onSort,
         }
     }
 
     @computed get countryColors(): Record<string, string> {
-        const locations = uniq((this.data || []).map(d => d.location))
+        const locations = uniq((this.data || []).map((d) => d.location))
         const colors = schemeCategory10
         return fromPairs(
             locations.map((l, i) => [l, colors[i % colors.length]])
@@ -267,18 +266,18 @@ export class CovidTable extends React.Component<CovidTableProps> {
         return (
             <div
                 className={classnames("covid-table-container", {
-                    "covid-table-mobile": this.tableState.isMobile
+                    "covid-table-mobile": this.tableState.isMobile,
                 })}
             >
                 <div
                     className={classnames("covid-table-wrapper", {
-                        truncated: this.isTruncated
+                        truncated: this.isTruncated,
                     })}
                 >
                     <table className="covid-table">
                         <thead>
                             <tr>
-                                {this.columns.map(key => (
+                                {this.columns.map((key) => (
                                     <React.Fragment key={key}>
                                         {columns[key].header(
                                             this.headerCellProps
@@ -288,7 +287,7 @@ export class CovidTable extends React.Component<CovidTableProps> {
                             </tr>
                         </thead>
                         <tbody>
-                            {this.rowData.shown.map(datum => (
+                            {this.rowData.shown.map((datum) => (
                                 <CovidTableRow
                                     key={datum.id}
                                     datum={datum}
@@ -297,7 +296,7 @@ export class CovidTable extends React.Component<CovidTableProps> {
                                         dateRange: this.dateRange,
                                         totalTestsBarScale: this
                                             .totalTestsBarScale,
-                                        countryColors: this.countryColors
+                                        countryColors: this.countryColors,
                                     }}
                                     extraRow={this.props.extraRow}
                                     state={this.tableState}

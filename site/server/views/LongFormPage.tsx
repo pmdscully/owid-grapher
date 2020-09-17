@@ -9,8 +9,8 @@ import {
     formatDate,
     FormattedPost,
     FormattingOptions,
-    TocHeading
-} from "../formatting"
+    TocHeading,
+} from "site/server/formatting"
 import { SiteSubnavigation } from "./SiteSubnavigation"
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome"
 import { faBook } from "@fortawesome/free-solid-svg-icons/faBook"
@@ -61,12 +61,12 @@ export const LongFormPage = (props: {
     let hasSidebar = false
     const endNotes = { text: "Endnotes", slug: "endnotes" }
     const tocHeadings: TocHeading[] = [...post.tocHeadings]
-    if (tocHeadings.some(tocHeading => !tocHeading.isSubheading)) {
+    if (tocHeadings.some((tocHeading) => !tocHeading.isSubheading)) {
         hasSidebar = true
         if (post.footnotes.length) {
             tocHeadings.push({
                 ...endNotes,
-                isSubheading: false
+                isSubheading: false,
             })
         }
         if (isEntry || isSubEntry) {
@@ -74,12 +74,12 @@ export const LongFormPage = (props: {
                 {
                     text: "Licence",
                     slug: "licence",
-                    isSubheading: false
+                    isSubheading: false,
                 },
                 {
                     text: "Citation",
                     slug: "citation",
-                    isSubheading: false
+                    isSubheading: false,
                 }
             )
         }
@@ -136,7 +136,7 @@ export const LongFormPage = (props: {
                                         {post.byline ? (
                                             <div
                                                 dangerouslySetInnerHTML={{
-                                                    __html: post.byline
+                                                    __html: post.byline,
                                                 }}
                                             ></div>
                                         ) : (
@@ -154,7 +154,7 @@ export const LongFormPage = (props: {
                                     <div
                                         className="blog-info"
                                         dangerouslySetInnerHTML={{
-                                            __html: post.info
+                                            __html: post.info,
                                         }}
                                     />
                                 )}
@@ -163,7 +163,7 @@ export const LongFormPage = (props: {
                                     <div
                                         className="last-updated"
                                         dangerouslySetInnerHTML={{
-                                            __html: post.lastUpdated
+                                            __html: post.lastUpdated,
                                         }}
                                     />
                                 )}
@@ -212,7 +212,7 @@ export const LongFormPage = (props: {
                                     <div
                                         className="article-content"
                                         dangerouslySetInnerHTML={{
-                                            __html: post.html
+                                            __html: post.html,
                                         }}
                                     />
                                     <footer className="article-footer">
@@ -231,12 +231,14 @@ export const LongFormPage = (props: {
                                                                 ) => (
                                                                     <li
                                                                         key={i}
-                                                                        id={`note-${i +
-                                                                            1}`}
+                                                                        id={`note-${
+                                                                            i +
+                                                                            1
+                                                                        }`}
                                                                     >
                                                                         <p
                                                                             dangerouslySetInnerHTML={{
-                                                                                __html: footnote
+                                                                                __html: footnote,
                                                                             }}
                                                                         />
                                                                     </li>
@@ -244,9 +246,7 @@ export const LongFormPage = (props: {
                                                             )}
                                                         </ol>
                                                     </React.Fragment>
-                                                ) : (
-                                                    undefined
-                                                )}
+                                                ) : undefined}
                                                 {(isPost ||
                                                     isEntry ||
                                                     isSubEntry) && (
@@ -358,8 +358,9 @@ export const LongFormPage = (props: {
                             <li id="wp-admin-bar-edit">
                                 <a
                                     className="ab-item"
-                                    href={`${WORDPRESS_URL}/wp/wp-admin/post.php?post=${post.postId ||
-                                        post.id}&action=edit`}
+                                    href={`${WORDPRESS_URL}/wp/wp-admin/post.php?post=${
+                                        post.postId || post.id
+                                    }&action=edit`}
                                 >
                                     Edit Page
                                 </a>
@@ -373,11 +374,11 @@ export const LongFormPage = (props: {
                         __html: `
                         runTableOfContents(${JSON.stringify({
                             headings: tocHeadings,
-                            pageTitle
+                            pageTitle,
                             // hideSubheadings: true
                         })})
                         runRelatedCharts(${JSON.stringify(post.relatedCharts)})
-                        `
+                        `,
                     }}
                 />
             </body>

@@ -1,7 +1,7 @@
 import * as glob from "glob"
 import parseUrl from "url-parse"
 import * as path from "path"
-import * as _ from "lodash"
+import * as lodash from "lodash"
 import md5 from "md5"
 
 import { BAKED_BASE_URL, OPTIMIZE_SVG_EXPORTS } from "settings"
@@ -13,7 +13,7 @@ import { log } from "utils/server/log"
 // Given a grapher url with query string, create a key to match export filenames
 export function grapherUrlToFilekey(grapherUrl: string) {
     const url = parseUrl(grapherUrl)
-    const slug = _.last(url.pathname.split("/")) as string
+    const slug = lodash.last(url.pathname.split("/")) as string
     const queryStr = (url.query as unknown) as string
     return `${slug}${queryStr ? "-" + md5(queryStr) : ""}`
 }
@@ -61,7 +61,7 @@ export async function bakeGrapherUrls(urls: string[]) {
             continue
         }
 
-        const slug = _.last(parseUrl(url).pathname.split("/"))
+        const slug = lodash.last(parseUrl(url).pathname.split("/"))
         if (!slug) {
             log.warn(`Invalid chart url ${url}`)
             continue
@@ -114,7 +114,7 @@ export async function getGrapherExportsByUrl(): Promise<GrapherExports> {
                 svgUrl: `${BAKED_BASE_URL}/exports/${filename}`,
                 version: versionNumber,
                 width: parseInt(width),
-                height: parseInt(height)
+                height: parseInt(height),
             })
         }
     }
@@ -124,7 +124,7 @@ export async function getGrapherExportsByUrl(): Promise<GrapherExports> {
             return exportsByKey.get(
                 grapherUrlToFilekey(grapherUrl).toLowerCase()
             )
-        }
+        },
     }
 }
 interface ChartItemWithTags {
@@ -150,7 +150,7 @@ export async function getIndexableCharts(): Promise<ChartItemWithTags[]> {
         c.tags = []
     }
 
-    const chartsById = _.keyBy(chartItems, c => c.id)
+    const chartsById = lodash.keyBy(chartItems, (c) => c.id)
 
     for (const ct of chartTags) {
         // XXX hardcoded filtering to public parent tags
@@ -171,7 +171,7 @@ export async function getIndexableCharts(): Promise<ChartItemWithTags[]> {
                 1505,
                 1508,
                 1512,
-                1510
+                1510,
             ].indexOf(ct.tagParentId) === -1
         )
             continue

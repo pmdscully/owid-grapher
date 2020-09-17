@@ -4,14 +4,14 @@ import { observer } from "mobx-react"
 import { bind } from "decko"
 import { ScaleLinear } from "d3-scale"
 
-import { dateDiffInDays, addDays } from "charts/Util"
+import { dateDiffInDays, addDays } from "grapher/utils/Util"
 
 import { CovidCountryDatum, DateRange, CovidDatum } from "./CovidTypes"
 import { CovidTableState } from "./CovidTable"
 import {
     CovidTableColumnKey,
     columns,
-    CovidTableCellSpec
+    CovidTableCellSpec,
 } from "./CovidTableColumns"
 
 export interface CovidTableTransform {
@@ -33,7 +33,7 @@ export interface CovidTableRowProps {
 @observer
 export class CovidTableRow extends React.Component<CovidTableRowProps> {
     static defaultProps = {
-        onHighlightDate: () => undefined
+        onHighlightDate: () => undefined,
     }
 
     @observable.ref highlightDate: Date | undefined = undefined
@@ -41,7 +41,7 @@ export class CovidTableRow extends React.Component<CovidTableRowProps> {
     @computed get data() {
         const d = this.props.datum
         const [start, end] = this.props.transform.dateRange
-        return d.series.filter(d => d.date >= start && d.date <= end)
+        return d.series.filter((d) => d.date >= start && d.date <= end)
     }
 
     @bind dateToIndex(date: Date): number {
@@ -99,11 +99,11 @@ export class CovidTableRow extends React.Component<CovidTableRowProps> {
                 x: this.x,
                 currentX: this.currentX,
                 highlightedX: this.hightlightedX,
-                onHover: this.onBarHover
+                onHover: this.onBarHover,
             },
             totalTestsBarScale: this.props.transform.totalTestsBarScale,
             countryColors: this.props.transform.countryColors,
-            baseRowSpan: this.props.extraRow ? 2 : 1
+            baseRowSpan: this.props.extraRow ? 2 : 1,
         }
     }
 
@@ -111,7 +111,7 @@ export class CovidTableRow extends React.Component<CovidTableRowProps> {
         return (
             <React.Fragment>
                 <tr className={this.props.className}>
-                    {this.props.columns.map(key => (
+                    {this.props.columns.map((key) => (
                         <React.Fragment key={key}>
                             {columns[key].cell(this.cellProps)}
                         </React.Fragment>
@@ -121,9 +121,7 @@ export class CovidTableRow extends React.Component<CovidTableRowProps> {
                     <tr className={this.props.className}>
                         {this.props.extraRow(this.cellProps)}
                     </tr>
-                ) : (
-                    undefined
-                )}
+                ) : undefined}
             </React.Fragment>
         )
     }

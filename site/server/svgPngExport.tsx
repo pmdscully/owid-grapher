@@ -5,9 +5,9 @@ import svgo from "svgo"
 
 declare var global: any
 global.window = { location: { search: "" } }
-global.App = { isEditor: false }
 
-import { ChartConfig, ChartConfigProps } from "charts/ChartConfig"
+import { GrapherInterface } from "grapher/core/GrapherInterface"
+import { Grapher } from "grapher/core/Grapher"
 
 const svgoConfig: svgo.Options = {
     floatPrecision: 2,
@@ -15,8 +15,8 @@ const svgoConfig: svgo.Options = {
         { collapseGroups: false }, // breaks the "Our World in Data" logo in the upper right
         { removeUnknownsAndDefaults: false }, // would remove hrefs from links (<a>)
         { removeViewBox: false },
-        { removeXMLNS: false }
-    ]
+        { removeXMLNS: false },
+    ],
 }
 
 const svgoInstance = new svgo(svgoConfig)
@@ -27,10 +27,10 @@ export async function optimizeSvg(svgString: string): Promise<string> {
 }
 
 export async function chartToSVG(
-    jsonConfig: ChartConfigProps,
+    jsonConfig: GrapherInterface,
     vardata: any
 ): Promise<string> {
-    const chart = new ChartConfig(jsonConfig)
+    const chart = new Grapher({ ...jsonConfig, manuallyProvideData: true })
     chart.isExporting = true
     chart.receiveData(vardata)
     return chart.staticSVG
@@ -38,14 +38,14 @@ export async function chartToSVG(
 
 export async function bakeImageExports(
     outDir: string,
-    jsonConfig: ChartConfigProps,
+    jsonConfig: GrapherInterface,
     vardata: any,
     optimizeSvgs = false
 ) {
-    const chart = new ChartConfig(jsonConfig)
+    const chart = new Grapher({ ...jsonConfig, manuallyProvideData: true })
     chart.isExporting = true
     chart.receiveData(vardata)
-    const outPath = path.join(outDir, chart.props.slug as string)
+    const outPath = path.join(outDir, chart.slug as string)
 
     let svgCode = chart.staticSVG
     if (optimizeSvgs) svgCode = await optimizeSvg(svgCode)
@@ -58,6 +58,6 @@ export async function bakeImageExports(
             .png()
             .resize(chart.idealBounds.width, chart.idealBounds.height)
             .flatten({ background: "#ffffff" })
-            .toFile(`${outPath}.png`)
+            .toFile(`${outPath}.png`),
     ])
 }

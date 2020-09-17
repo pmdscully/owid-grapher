@@ -65,8 +65,10 @@
         position: absolute;
         top: 0;
         bottom: 0;
-        z-index: $zindex-sidebar;
         margin-left: -($sidebar-content-width + 2 * $padding-x-md) + $sidebar-closed-drawer-width;
+        @include sm-only {
+            margin-left: -($sidebar-content-width + 2 * $padding-x-md);
+        }
         transition: margin 300ms ease;
 
         .toggle-toc {
@@ -75,9 +77,16 @@
             bottom: 0;
             padding: $vertical-spacing 0;
             right: -$sidebar-toggle-width / 2;
+            @include sm-only {
+                right: -$sidebar-toggle-width - $padding-x-sm/2;
+            }
             button {
+                z-index: $zindex-sidebar;
                 position: sticky;
                 top: $vertical-spacing;
+                @include sm-only {
+                    top: $padding-x-sm/2;
+                }
                 width: $sidebar-toggle-width;
                 height: $sidebar-toggle-width;
                 background-color: $primary-color;
@@ -100,6 +109,7 @@
         }
 
         &.toggled {
+            z-index: $zindex-sidebar;
             margin-left: 0;
             @include block-shadow;
 
@@ -115,6 +125,7 @@
             }
         }
     }
+
     @include xxlg-up {
         position: relative;
         height: 100%;
